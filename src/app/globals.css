@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Gigly design tokens — lifted verbatim from gigly-prototype.html.
+   The prototype has light as the base with dark via prefers-color-scheme;
+   we run it the other way up (dark is the base, light overrides) so dark is
+   the default. Both palettes are byte-identical to the prototype.
+   data-theme on <html> lets a manual toggle override the device later.
+   ========================================================================= */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #18121F;
+  --ink: #F5F2EC;
+  --soft: #B0A8BC;
+  --card: #251C32;
+  --line: #3D324D;
+  --raise: #30263F;
+  --hype: #FF4D6A;
+  --go: #2FCB8C;
+  --down: #FF8296;
+  --focus: #9DB4FF;
+  --river: #23364D;
+  --land: #211A2C;
+  --road: #3A3049;
+
+  /* identical in both palettes — the prototype never redefines these */
+  --on-hype: #FFFFFF;
+  --gold: #F8DF3A;
+}
+
+/* Light palette. Applied when the device asks for light, unless dark is pinned. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --bg: #F3F1EE;
+    --ink: #17131D;
+    --soft: #6A6472;
+    --card: #FFFFFF;
+    --line: #DDD8D1;
+    --raise: #E9E5DF;
+    --hype: #F0284A;
+    --go: #14A36B;
+    --down: #C2334B;
+    --focus: #2447F9;
+    --river: #BFD3E0;
+    --land: #E6E2DB;
+    --road: #CFC9C0;
+  }
+}
+
+/* Manual override, either direction. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #F3F1EE;
+  --ink: #17131D;
+  --soft: #6A6472;
+  --card: #FFFFFF;
+  --line: #DDD8D1;
+  --raise: #E9E5DF;
+  --hype: #F0284A;
+  --go: #14A36B;
+  --down: #C2334B;
+  --focus: #2447F9;
+  --river: #BFD3E0;
+  --land: #E6E2DB;
+  --road: #CFC9C0;
+}
+
+/* Expose the tokens to Tailwind. `inline` keeps utilities as var() references
+   so they follow the theme at runtime rather than baking in a hex. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-soft: var(--soft);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-raise: var(--raise);
+  --color-hype: var(--hype);
+  --color-on-hype: var(--on-hype);
+  --color-gold: var(--gold);
+  --color-go: var(--go);
+  --color-down: var(--down);
+  --color-focus: var(--focus);
+  --color-river: var(--river);
+  --color-land: var(--land);
+  --color-road: var(--road);
+
+  --font-display: var(--font-bowlby), Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --font-body: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ============================================================================
+   Base — the prototype's reset, minus what Tailwind Preflight already does.
+   ========================================================================= */
+
+html {
+  height: 100%;
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  -webkit-text-size-adjust: 100%;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

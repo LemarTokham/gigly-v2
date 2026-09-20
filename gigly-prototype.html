@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gigly prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Bowlby+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F3F1EE;--ink:#17131D;--soft:#6A6472;--card:#FFFFFF;--line:#DDD8D1;--raise:#E9E5DF;
+  --hype:#F0284A;--on-hype:#FFFFFF;--gold:#F8DF3A;--go:#14A36B;--down:#C2334B;--focus:#2447F9;
+  --river:#BFD3E0;--land:#E6E2DB;--road:#CFC9C0;
+  --display:"Bowlby One",Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif;
+  --body:"Archivo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#18121F;--ink:#F5F2EC;--soft:#B0A8BC;--card:#251C32;--line:#3D324D;--raise:#30263F;
+    --hype:#FF4D6A;--go:#2FCB8C;--down:#FF8296;--focus:#9DB4FF;--river:#23364D;--land:#211A2C;--road:#3A3049;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#18121F;--ink:#F5F2EC;--soft:#B0A8BC;--card:#251C32;--line:#3D324D;--raise:#30263F;
+  --hype:#FF4D6A;--go:#2FCB8C;--down:#FF8296;--focus:#9DB4FF;--river:#23364D;--land:#211A2C;--road:#3A3049;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:inherit}
+h1,h2,h3,p,ul,ol{margin:0;padding:0}
+ul,ol{list-style:none}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.ic.fill{fill:currentColor;stroke:none}
+svg.art{display:block;width:100%;height:100%}
+.app{max-width:500px;margin:0 auto;padding:0 16px 96px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 0 10px}
+.mark{font-family:var(--display);font-weight:400;font-size:28px;line-height:1;display:flex;align-items:baseline;gap:10px}
+.mark span{font-family:var(--body);font-weight:600;font-size:13px;color:var(--soft);display:inline-flex;align-items:center;gap:3px}
+.mark span svg{width:14px;height:14px}
+.tokens{display:flex;align-items:center;gap:2px;padding:7px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.tokens svg{width:20px;height:20px;color:var(--hype)}
+.tokens svg.spent{color:var(--line)}
+
+/* day strip + chips */
+.days{display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none;margin:0 -16px;padding-left:16px;padding-right:16px}
+.days::-webkit-scrollbar,.rail::-webkit-scrollbar,.chips::-webkit-scrollbar{display:none}
+.day{flex:none;width:52px;padding:8px 0 7px;border-radius:12px;text-align:center;background:var(--card);border:1px solid var(--line)}
+.day i{display:block;font-style:normal;font-size:12px;color:var(--soft);font-weight:600}
+.day b{display:block;font-family:var(--display);font-weight:400;font-size:19px;line-height:1.15}
+.day[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.day[aria-pressed="true"] i{color:inherit;opacity:.75}
+.day.all{width:auto;padding-left:14px;padding-right:14px;display:grid;place-items:center;font-weight:700;font-size:14px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -16px 0;padding:0 16px}
+.chip{flex:none;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;border:1px solid var(--line);color:var(--soft)}
+.chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);background:var(--card)}
+
+/* section heads */
+.head{display:flex;justify-content:space-between;align-items:center;margin:22px 0 10px}
+.head h2{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
+.head button{font-size:14px;font-weight:700;color:var(--soft);display:inline-flex;align-items:center;gap:4px}
+.muted{color:var(--soft);font-size:14px}
+
+/* backed rail */
+.rail{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.face{flex:none;width:72px;text-align:center}
+.face .ph{position:relative;display:block;width:72px;height:72px;border-radius:50%;overflow:hidden}
+.face .n{position:absolute;left:0;bottom:0;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--display);font-size:13px;display:grid;place-items:center;border:2px solid var(--bg)}
+.face .wrap{position:relative;display:inline-block}
+.face em{display:block;font-style:normal;font-size:12px;font-weight:600;margin-top:6px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* gig cards */
+.feed{display:grid;gap:16px;margin-top:16px}
+.gig{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.shot{position:relative;display:block;width:100%;aspect-ratio:16/10;overflow:hidden;color:#fff}
+.shot::after{content:"";position:absolute;inset:40% 0 0;background:linear-gradient(to top,rgba(10,6,20,.88),rgba(10,6,20,0))}
+.tag{position:absolute;top:10px;z-index:1;padding:5px 10px;border-radius:999px;font-size:13px;font-weight:700;background:rgba(10,6,20,.72);color:#fff}
+.tag.l{left:10px}.tag.r{right:10px;background:var(--gold);color:#17131D}
+.title{position:absolute;left:14px;right:14px;bottom:12px;z-index:1}
+.title b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(24px,7.4vw,30px);line-height:1.04;overflow-wrap:anywhere}
+.title i{display:block;font-style:normal;font-size:14px;font-weight:600;opacity:.9;margin-top:3px}
+.foot{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px}
+.place{flex:1;min-width:0;font-weight:700;font-size:15px;line-height:1.25}
+.place i{display:block;font-style:normal;font-weight:400;font-size:13px;color:var(--soft)}
+.count{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:14px;color:var(--hype)}
+.count svg{width:16px;height:16px}
+.round{width:42px;height:42px;flex:none;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;color:var(--ink)}
+.round[aria-pressed="true"]{background:var(--go);border-color:var(--go);color:#fff}
+.round.h{border-color:var(--hype);color:var(--hype)}
+.round.h[aria-pressed="true"]{background:var(--hype);color:var(--on-hype)}
+.round[disabled]{opacity:.35;cursor:not-allowed}
+.stamp{position:absolute;z-index:2;right:12px;top:48px;font-family:var(--display);font-size:16px;line-height:1;color:var(--hype);background:rgba(255,255,255,.94);border:3px solid var(--hype);padding:6px 9px 5px;border-radius:6px;transform:rotate(-12deg);pointer-events:none}
+.stamp.fresh{animation:thud .3s cubic-bezier(.2,1.7,.4,1)}
+@keyframes thud{from{transform:rotate(-12deg) scale(2.4);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}
+.addgig{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border:2px dashed var(--line);border-radius:16px;font-weight:700;color:var(--soft)}
+.empty{border:2px dashed var(--line);border-radius:16px;padding:22px 16px;text-align:center;color:var(--soft);margin-top:16px}
+.empty .btn{margin-top:12px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 18px;border-radius:12px;font-weight:700;font-size:16px;background:var(--ink);color:var(--bg);border:2px solid var(--ink)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.hy{background:var(--hype);border-color:var(--hype);color:var(--on-hype)}
+.btn.hy[aria-pressed="true"]{background:transparent;color:var(--hype)}
+.btn[aria-pressed="true"].go{background:var(--go);border-color:var(--go);color:#fff}
+.btn.sm{padding:8px 12px;font-size:14px;border-radius:10px}
+.btn.wide{flex:1}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.acts{display:flex;gap:8px;margin-top:14px;align-items:stretch}
+.sq{width:52px;flex:none;border-radius:12px;border:2px solid var(--line);display:grid;place-items:center}
+.btn.flw[aria-pressed="true"]{border-color:var(--ink)}
+.sq[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+
+/* map */
+.map{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:600/470;background:var(--land);border:1px solid var(--line);margin-top:4px}
+.map svg.base{position:absolute;inset:0;width:100%;height:100%}
+.map text{font-family:var(--body);font-size:19px;font-weight:600;fill:var(--soft)}
+.pin{position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--display);font-size:15px;display:grid;place-items:center;border:3px solid var(--bg)}
+.pin.none{background:var(--raise);color:var(--soft)}
+.pin[aria-pressed="true"]{background:var(--hype);color:var(--on-hype);transform:scale(1.18)}
+.vhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:16px 0 10px}
+.vhead b{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1;display:block}
+.minis{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.minis::-webkit-scrollbar{display:none}
+.mini{flex:none;width:168px}
+.mini .ph{display:block;aspect-ratio:16/10;border-radius:12px;overflow:hidden}
+.mini b{display:block;font-weight:700;font-size:15px;margin-top:7px;line-height:1.2}
+.mini i{display:block;font-style:normal;font-size:13px;color:var(--soft)}
+
+/* chart */
+.nudge{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:16px;background:var(--ink);color:var(--bg)}
+.nudge .stack{display:flex;flex:none}
+.nudge .stack span{width:38px;height:38px;border-radius:50%;overflow:hidden;border:2px solid var(--ink);margin-left:-12px}
+.nudge .stack span:first-child{margin-left:0}
+.nudge b{display:block;font-weight:700;font-size:16px;line-height:1.2}
+.nudge i{display:block;font-style:normal;font-size:13px;opacity:.75}
+.nudge svg.ic{margin-left:auto}
+.nudge.done{background:var(--card);color:var(--soft);border:1px solid var(--line)}
+.king{position:relative;margin-top:16px;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--line)}
+.king .shot{aspect-ratio:16/9}
+.king .num{position:absolute;left:10px;top:10px;z-index:1;font-family:var(--display);font-size:40px;line-height:1;color:#fff;background:rgba(10,6,20,.8);border-radius:14px;padding:4px 14px 8px}
+.rows{margin-top:6px}
+.rows li{position:relative;display:grid;grid-template-columns:30px 54px 1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.rk{text-align:center;font-family:var(--display);font-size:18px;line-height:1}
+.rk i{display:block;font-family:var(--body);font-style:normal;font-size:11px;font-weight:700;margin-top:3px;color:var(--soft)}
+.rk i.up{color:var(--go)}.rk i.dn{color:var(--down)}
+.th{display:block;width:54px;height:54px;border-radius:12px;overflow:hidden}
+.nm{min-width:0}
+.nm b{display:block;font-weight:700;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.nm i{display:block;font-style:normal;font-size:13px;color:var(--soft)}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs div{max-width:500px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tab{display:grid;justify-items:center;gap:3px;padding:10px 4px 9px;font-size:12px;font-weight:700;color:var(--soft)}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] svg{color:var(--hype)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;z-index:10;background:rgba(8,5,14,.62);display:flex;align-items:flex-end;justify-content:center}
+.scrim[hidden]{display:none}
+.sheet{position:relative;background:var(--bg);color:var(--ink);width:100%;max-width:500px;max-height:93%;overflow-y:auto;border-radius:22px 22px 0 0}
+.sheet .shot{aspect-ratio:16/10}
+.sheet .title b{font-size:clamp(28px,8.5vw,36px)}
+.pad{padding:16px 18px calc(26px + env(safe-area-inset-bottom,0px))}
+.close{position:absolute;right:12px;top:12px;z-index:3;width:38px;height:38px;border-radius:50%;background:rgba(10,6,20,.7);color:#fff;display:grid;place-items:center}
+.plain .close{position:static;background:var(--card);color:var(--ink);border:1px solid var(--line);flex:none}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
+.ptop h2{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.1}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+.stats b{display:block;font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
+.stats i{display:block;font-style:normal;font-size:12px;color:var(--soft);margin-top:2px}
+.sheet h3{font-family:var(--display);font-weight:400;font-size:16px;margin:22px 0 8px}
+.bio{margin-top:14px;font-size:15px;max-width:58ch}
+.grow{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border-radius:14px;background:var(--card);border:1px solid var(--line);margin-top:8px}
+.grow .nm{flex:1}
+.dblock{flex:none;width:50px;border-radius:10px;background:var(--ink);color:var(--bg);text-align:center;padding:6px 0 5px;line-height:1.05}
+.dblock i{display:block;font-style:normal;font-size:11px;font-weight:700;opacity:.8}
+.dblock b{display:block;font-family:var(--display);font-weight:400;font-size:19px}
+.lrow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.lrow .nm{flex:1}
+.lrow button.nm{display:block}
+.info{display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600}
+.info svg{color:var(--soft)}
+.link{font-size:14px;font-weight:700;color:var(--soft);text-decoration:underline;margin-top:20px;display:inline-block}
+.rules li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line);font-weight:600}
+.rules li svg{color:var(--hype);margin-top:1px}
+.rules li span i{display:block;font-style:normal;font-weight:400;color:var(--soft);font-size:14px}
+
+/* discover deck */
+.dots{display:flex;gap:5px;justify-content:center;margin:2px 0 12px}
+.dots i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.dots i.on{background:var(--ink)}
+.deck{position:relative;border-radius:18px;overflow:hidden}
+.deck .shot{aspect-ratio:4/4.3}
+.deck .title b{font-size:clamp(30px,9vw,40px)}
+.play{position:absolute;left:12px;top:12px;z-index:2;height:44px;padding:0 16px 0 12px;border-radius:999px;background:rgba(255,255,255,.95);color:#17131D;display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.play svg{width:22px;height:22px}
+.eq{display:flex;gap:3px;align-items:flex-end;height:18px;width:22px;justify-content:center}
+.eq i{width:4px;border-radius:2px;background:#17131D;height:30%;animation:eq .7s ease-in-out infinite alternate}
+.eq i:nth-child(2){animation-delay:-.2s}.eq i:nth-child(3){animation-delay:-.45s}.eq i:nth-child(4){animation-delay:-.1s}
+@keyframes eq{to{height:100%}}
+.deck .stamp{top:auto;bottom:96px;right:18px;font-size:22px}
+
+/* share cards */
+.story{position:relative;margin:4px auto 0;max-width:320px;border-radius:18px;overflow:hidden;background:#17131D;color:#fff}
+.story .shot{aspect-ratio:1/1}
+.story .shot::after{inset:55% 0 0}
+.story .body{padding:16px 18px 20px}
+.story .big{font-family:var(--display);font-size:22px;line-height:1.1;color:var(--gold)}
+.story .who{font-family:var(--display);font-size:32px;line-height:1.02;margin-top:6px;overflow-wrap:anywhere}
+.story .sm{font-size:14px;opacity:.85;margin-top:8px;font-weight:600}
+.story .url{display:inline-block;margin-top:14px;padding:6px 10px;border-radius:8px;background:var(--hype);color:#fff;font-weight:700;font-size:14px}
+.story .stamp{position:static;display:inline-block;margin-top:12px;background:transparent;color:#fff;border-color:#fff;transform:rotate(-4deg)}
+
+/* header search */
+.hbtns{display:flex;align-items:center;gap:8px}
+.hround{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:grid;place-items:center}
+/* story rings */
+.face{width:84px}
+.face .wrap{padding:3px;border-radius:50%;border:3px solid var(--hype)}
+.face .wrap.seen{border-color:var(--line)}
+.face .n{left:-2px;bottom:-2px}
+/* story viewer */
+.sheet.full{height:100%;max-height:100%;border-radius:0;background:#0E0A14;color:#fff;overflow:hidden}
+.sv{position:relative;height:100%}
+.sv-art{position:absolute;left:0;right:0;top:0;height:62%}
+.sv-shade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(14,10,20,.55) 0,rgba(14,10,20,0) 18%,rgba(14,10,20,0) 38%,#0E0A14 62%)}
+.sv-bars{position:absolute;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;gap:4px;z-index:3}
+.sv-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden}
+.sv-bars i.done{background:#fff}
+.sv-bars i b{display:block;height:100%;width:0;background:#fff}
+.sv-bars i.now b{animation:fillbar 6s linear forwards}
+@keyframes fillbar{to{width:100%}}
+.sv-top{position:absolute;left:12px;right:12px;top:calc(24px + env(safe-area-inset-top,0px));z-index:4;display:flex;align-items:center;gap:10px;font-weight:700}
+.sv-top .th{width:36px;height:36px;border-radius:50%}
+.sv-top i{font-style:normal;font-weight:600;opacity:.8;font-size:13px;display:block}
+.sv-top .close{position:static;margin-left:auto;background:rgba(14,10,20,.6)}
+.sv-zone{position:absolute;top:0;bottom:0;width:38%;z-index:2}
+.sv-zone.l{left:0}.sv-zone.r{right:0;width:62%}
+.sv-bot{position:absolute;left:18px;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:4;pointer-events:none}
+.sv-bot .acts{pointer-events:auto}
+.sv-bot .clip{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;background:rgba(255,255,255,.95);color:#17131D;border-radius:999px;padding:6px 12px 6px 10px}
+.sv-bot h2{font-family:var(--display);font-weight:400;font-size:clamp(32px,10vw,44px);line-height:1.02;margin-top:12px;overflow-wrap:anywhere}
+.sv-bot p{font-weight:600;opacity:.85;margin-top:6px}
+.sv-bot .info{margin-top:10px;opacity:1}
+.sv-bot .info svg{color:#fff;opacity:.7}
+.sv-bot .btn.ghost{color:#fff;border-color:rgba(255,255,255,.4)}
+.sv-bot .btn.hy[aria-pressed="true"]{color:#fff;border-color:#fff}
+.sv .stamp{top:15%;right:20px;font-size:24px}
+/* map extras */
+.pin.tonight{box-shadow:0 0 0 3px var(--gold)}
+.pin[aria-pressed="true"]{z-index:2}
+.pin[aria-pressed="true"]::after{content:attr(data-name);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--ink);color:var(--bg);font-family:var(--body);font-weight:700;font-size:12px;padding:4px 8px;border-radius:8px}
+.pin.edge[aria-pressed="true"]::after{left:-6px;transform:none}
+.legend{font-size:13px;color:var(--soft);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 3px var(--gold);margin:0 10px 0 3px;vertical-align:-1px}
+.tile{display:grid;place-items:center;width:54px;height:54px;border-radius:12px;background:var(--raise);color:var(--soft);flex:none}
+/* pending + search + segmented */
+.tag.p{top:44px;left:10px;background:#fff;color:#17131D}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{padding:10px 4px;border-radius:12px;border:2px solid var(--line);font-weight:700;font-size:14px;text-align:center;background:var(--card);line-height:1.2}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.sbox{display:flex;align-items:center;gap:10px;padding:0 14px;border:2px solid var(--line);border-radius:14px;background:var(--card);margin-top:8px}
+.sbox input{flex:1;min-width:0;border:0;background:transparent;padding:13px 0;outline:none}
+.sbox:focus-within{border-color:var(--focus)}
+
+/* you */
+.me{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:6px}
+.me .big{display:flex;gap:4px}
+.me .big svg{width:40px;height:40px;color:var(--hype)}
+.me .big svg.spent{color:var(--line)}
+.me b{display:block;font-family:var(--display);font-weight:400;font-size:18px;line-height:1.15}
+.field{display:block;margin-top:14px}
+.field span{display:block;font-weight:700;font-size:14px;margin-bottom:5px}
+.field input,.field select{width:100%;padding:11px 12px;border:2px solid var(--line);border-radius:12px;background:var(--card)}
+.err{color:var(--hype);font-weight:700;font-size:14px;margin-top:6px}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:14px;font-weight:600;max-width:min(92vw,460px);text-align:center}
+.toast.up{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px))}
+.toast[hidden]{display:none}
+.empty svg{display:inline-block;vertical-align:-4px;margin:0 2px}
+@media (prefers-reduced-motion:reduce){.sv-bars i.now b{animation:none;width:100%}.stamp.fresh,.eq i{animation:none}.eq i{height:70%}*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="mark">Gigly<span id="city"></span></h1>
+    <div class="hbtns"><button class="hround" data-act="search" aria-label="Search" id="sbtn"></button><button class="tokens" id="tokens" data-act="rules"></button></div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav class="tabs" aria-label="Sections"><div id="tabs"></div></nav>
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Details"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+(function(){
+"use strict";
+/* ================= sample data: venues are real, gigs and artists are invented ================= */
+var VENUES=[
+ {id:"jac",name:"The Jacaranda",area:"Ropewalks",cap:150,x:270,y:150},
+ {id:"ship",name:"The Shipping Forecast",area:"Ropewalks",cap:200,x:345,y:180},
+ {id:"ebgb",name:"EBGBs",area:"Ropewalks",cap:250,x:290,y:235},
+ {id:"kaz",name:"Kazimier Stockroom",area:"Ropewalks",cap:100,x:378,y:255},
+ {id:"qua",name:"Quarry",area:"Hardman Street",cap:180,x:460,y:165},
+ {id:"cale",name:"The Caledonia",area:"Georgian Quarter",cap:80,x:505,y:285},
+ {id:"k24",name:"24 Kitchen Street",area:"Baltic Triangle",cap:400,x:300,y:365},
+ {id:"fy",name:"Future Yard",area:"Birkenhead",cap:280,x:58,y:295}
+];
+var ARTISTS=[
+ {id:"a1",name:"Dock Leaf",genre:"Indie rock",group:"Indie",from:"Wavertree",followers:180,hypes:41,yday:3,pal:0,seed:11,band:["drums","guitar","mic","drums"],blurb:"Two drummers, no bassist. Loud, tuneful, done in 25 minutes."},
+ {id:"a2",name:"Marzipan Riot",genre:"Punk",group:"Punk",from:"Bootle",followers:420,hypes:58,yday:1,pal:1,seed:23,band:["guitar","mic","drums"],blurb:"Three chords and a megaphone. Every song is about landlords."},
+ {id:"a3",name:"Velvet Ferry",genre:"Dream pop",group:"Indie",from:"Birkenhead",followers:2600,hypes:37,yday:2,pal:2,seed:37,band:["synth","mic","guitar"],blurb:"Reverb-heavy pop written on the 6:40 ferry to work."},
+ {id:"a4",name:"Low Tide Club",genre:"Jazz",group:"Jazz",from:"Toxteth",followers:310,hypes:29,yday:6,pal:3,seed:41,band:["bass","drums","mic"],blurb:"Hard bop standards and originals, every other Sunday."},
+ {id:"a5",name:"Nan's Carpet",genre:"Post-punk",group:"Punk",from:"Anfield",followers:95,hypes:33,yday:8,pal:4,seed:53,band:["mic","guitar"],blurb:"Spoken word over bass loops. First gig was in a launderette."},
+ {id:"a6",name:"Ozone Layer Cake",genre:"Electronic",group:"Electronic",from:"Baltic Triangle",followers:1200,hypes:26,yday:4,pal:5,seed:67,band:["synth"],blurb:"Hardware-only sets. Nothing is synced and it still works."},
+ {id:"a7",name:"The Overheads",genre:"Indie",group:"Indie",from:"Allerton",followers:5400,hypes:22,yday:5,pal:1,seed:71,band:["guitar","mic","guitar","drums"],blurb:"The biggest small band in town, just back from a support tour."},
+ {id:"a8",name:"Sister Bootle",genre:"Soul",group:"Soul",from:"Bootle",followers:760,hypes:30,yday:7,pal:3,seed:83,band:["mic","bass","synth","mic"],blurb:"Seven-piece soul revue with a borrowed horn section."},
+ {id:"a9",name:"Halfway to Hoylake",genre:"Folk",group:"Folk",from:"West Kirby",followers:240,hypes:18,yday:10,pal:4,seed:97,band:["guitar","mic"],blurb:"Two voices, one guitar, songs about the Wirral coast."},
+ {id:"a10",name:"Kirkdale Static",genre:"Shoegaze",group:"Indie",from:"Kirkdale",followers:130,hypes:24,yday:9,pal:5,seed:101,band:["guitar","guitar","drums"],blurb:"Bring earplugs."},
+ {id:"a11",name:"Tuebrook Tapes",genre:"Hip hop",group:"Hip hop",from:"Tuebrook",followers:890,hypes:27,yday:0,pal:0,seed:113,band:["mic","synth","mic"],blurb:"A producer and two MCs. Beats from charity-shop cassettes."},
+ {id:"a12",name:"Pier Head Choir of One",genre:"Singer-songwriter",group:"Folk",from:"Aigburth",followers:60,hypes:9,yday:0,pal:2,seed:127,band:["mic"],blurb:"One woman, a loop pedal, twelve-part harmonies."}
+];
+var GIGS=[
+ {id:"g1",day:0,time:"19:30",venue:"jac",lineup:["a1","a5"],price:6},
+ {id:"g2",day:0,time:"20:00",venue:"cale",lineup:["a4"],price:0},
+ {id:"g3",day:0,time:"22:00",venue:"k24",lineup:["a6","a11"],price:8},
+ {id:"g4",day:1,time:"19:00",venue:"qua",lineup:["a10","a1"],price:5},
+ {id:"g5",day:1,time:"20:00",venue:"fy",lineup:["a3","a9"],price:10},
+ {id:"g6",day:2,time:"19:30",venue:"ebgb",lineup:["a2","a5","a10"],price:7},
+ {id:"g7",day:2,time:"18:00",venue:"kaz",lineup:["a12"],price:0},
+ {id:"g8",day:3,time:"20:00",venue:"ship",lineup:["a8"],price:9},
+ {id:"g9",day:4,time:"19:30",venue:"jac",lineup:["a9","a12"],price:4},
+ {id:"g10",day:5,time:"19:00",venue:"qua",lineup:["a7","a1"],price:12},
+ {id:"g11",day:5,time:"21:00",venue:"k24",lineup:["a11"],price:6},
+ {id:"g12",day:6,time:"20:00",venue:"cale",lineup:["a4","a8"],price:0},
+ {id:"g13",day:9,time:"19:30",venue:"fy",lineup:["a2","a3"],price:10},
+ {id:"g14",day:16,time:"20:00",venue:"ebgb",lineup:["a6"],price:8},
+ {id:"p1",day:-2,time:"19:30",venue:"ship",lineup:["a2","a1"],price:6},
+ {id:"p2",day:-6,time:"20:00",venue:"fy",lineup:["a7","a10"],price:12},
+ {id:"p3",day:-9,time:"20:00",venue:"cale",lineup:["a4"],price:0}
+];
+var GROUPS=["All","Indie","Punk","Jazz","Electronic","Folk","Soul","Hip hop"];
+var MAX=3,WEEK=7*864e5,KEY="gigly-proto-v3";
+
+/* ================= icons ================= */
+var P={
+ flame:'<path d="M12 2c.6 3.6 5.5 6 5.5 11.2A5.5 5.5 0 0 1 12 19a5.5 5.5 0 0 1-5.5-5.8c0-2 .9-3.4 2-4.5.1 1.9.9 3 2 3.2C10.300 8.200 9.600 5.500 12 2z"/>',
+ bell:'<path d="M6 16V10a6 6 0 0 1 12 0v6l2 2H4z"/><path d="M10 21h4"/>',
+ check:'<path d="M5 12.500l4.500 4.500L19 7"/>',plus:'<path d="M12 5v14M5 12h14"/>',
+ pin:'<path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/>',
+ cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+ bars:'<path d="M6 20v-8M12 20V4M18 20v-5"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+ map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+ play:'<path d="M8 5v14l11-7z"/>',share:'<path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"/>',
+ x:'<path d="M6 6l12 12M18 6 6 18"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500v.010"/>',
+ go:'<path d="M9 6l6 6-6 6"/>',search:'<circle cx="11" cy="11" r="6.500"/><path d="M16 16l4.500 4.500"/>',ticket:'<path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+function ic(n,cls){var fill=(n==="flame"||n==="play");return '<svg class="ic'+(fill?" fill":"")+(cls?" "+cls:"")+'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+P[n]+'</svg>';}
+
+/* ================= generated poster art (stands in for artist photos) ================= */
+var PAL=[{bg:"#FF5C9A",ink:"#1A1147",li:"#FFE0EC"},{bg:"#F8DF3A",ink:"#17130F",li:"#FFFBD6"},{bg:"#3EC6F0",ink:"#2A0F66",li:"#E0F8FF"},
+         {bg:"#FF6B3D",ink:"#3B0A1E",li:"#FFE1D2"},{bg:"#4FD9A0",ink:"#0B3B33",li:"#E2FDF1"},{bg:"#9B7BFF",ink:"#150A33",li:"#ECE4FF"}];
+function rng(s){return function(){s=(s*1664525+1013904223)%4294967296;return s/4294967296;};}
+function limb(pts,w){return '<polyline points="'+pts+'" fill="none" stroke-width="'+(w||6.5)+'" stroke-linecap="round" stroke-linejoin="round"/>';}
+function body(hair,seated){
+  var s=seated?"":'<path d="M-11 0 L-8 -52 L8 -52 L11 0 L4 0 L0 -38 L-4 0Z"/>';
+  s+='<path d="M-13 -50 Q-16 -80 -12 -93 L12 -93 Q16 -80 13 -50Z"/><rect x="-3.500" y="-98" width="7" height="7"/><circle cx="0" cy="-106" r="9.500"/>';
+  if(hair===1)s+='<circle cx="0" cy="-109" r="13.500"/>';
+  if(hair===2)s+='<path d="M-11 -110 Q0 -122 11 -110 L12 -86 L-12 -86Z"/>';
+  if(hair===3)s+='<path d="M-10 -110 Q0 -120 10 -110 L19 -108 L10 -105Z"/>';
+  return s;
+}
+function fig(pose,x,y,sc,flip,hair,li){
+  var g='<g transform="translate('+x+' '+y+') scale('+(flip?-sc:sc)+' '+sc+')">';
+  if(pose==="guitar"){
+    g+=body(hair)+limb("12,-88 28,-76 38,-83")+'<g transform="translate(2 -66) rotate(-25)"><ellipse rx="16" ry="12"/><ellipse cx="12" cy="-1" rx="10" ry="8.500"/><rect x="14" y="-2.200" width="46" height="4.400"/><rect x="58" y="-4.500" width="10" height="9" rx="1.500"/><circle r="4" fill="'+li+'" stroke="none" opacity=".85"/></g>'+limb("-12,-88 -18,-70 -2,-63");
+  }else if(pose==="mic"){
+    g+='<path d="M14 0 L14 -99" fill="none" stroke-width="2.500"/><path d="M4 0 L24 0" fill="none" stroke-width="3"/><rect x="8" y="-104" width="9" height="6" rx="3" transform="rotate(-20 12 -101)"/>'+body(hair)+limb("12,-88 22,-82 14,-97")+limb(flip?"-12,-88 -20,-70 -14,-54":"-12,-88 -25,-100 -29,-124");
+  }else if(pose==="synth"){
+    g+=body(hair)+limb("-12,-88 -24,-72 -20,-60")+limb("12,-88 24,-72 20,-60")+'<rect x="-48" y="-60" width="96" height="8" rx="2"/><rect x="-42" y="-72" width="34" height="12" rx="2"/><rect x="-2" y="-78" width="26" height="18" rx="2"/><rect x="1" y="-75" width="20" height="11" fill="'+li+'" stroke="none" opacity=".9"/><path d="M-40 -52 L-46 0 M40 -52 L46 0" fill="none" stroke-width="3.500"/>';
+  }else if(pose==="bass"){
+    g+=body(hair)+'<ellipse cx="24" cy="-34" rx="15" ry="22"/><ellipse cx="24" cy="-66" rx="11" ry="14"/><rect x="22.500" y="-120" width="3" height="44"/><circle cx="24" cy="-122" r="3.500"/><path d="M24 -12 L24 0" fill="none" stroke-width="2.500"/>'+limb("12,-88 27,-90 25,-103")+limb("-12,-88 -2,-66 18,-58");
+  }else{ /* drums */
+    g+='<g transform="translate(0 30)">'+body(hair,true)+limb("-12,-88 -27,-82 -31,-98",5.500)+limb("12,-88 28,-80 25,-96",5.500)+'<path d="M-31 -98 L-42 -116 M25 -96 L15 -90" fill="none" stroke-width="2.200" stroke-linecap="round"/></g>'+
+       '<circle cx="0" cy="-24" r="24"/><circle cx="0" cy="-24" r="17" fill="none" stroke="'+li+'" stroke-width="2" opacity=".7"/><ellipse cx="-15" cy="-54" rx="12" ry="8"/><ellipse cx="15" cy="-54" rx="12" ry="8"/><rect x="26" y="-44" width="22" height="30" rx="3"/><rect x="-48" y="-46" width="20" height="9" rx="2"/>'+
+       '<path d="M-42 0 L-42 -84 M44 0 L44 -92 M-38 -37 L-38 0" fill="none" stroke-width="2"/><ellipse cx="-42" cy="-84" rx="21" ry="3.500"/><ellipse cx="44" cy="-92" rx="23" ry="3.500"/>';
+  }
+  return g+'</g>';
+}
+var artN=0;
+function art(a){
+  var p=PAL[a.pal%PAL.length],r=rng(a.seed||7),id="z"+(artN++),i,s;
+  s='<svg class="art" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs>'+
+    '<radialGradient id="'+id+'g" cx="50%" cy="50%" r="52%"><stop offset="0" stop-color="'+p.li+'"/><stop offset="1" stop-color="'+p.li+'" stop-opacity="0"/></radialGradient>'+
+    '<pattern id="'+id+'p" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(28)"><circle cx="3.500" cy="3.500" r="1.800" fill="'+p.ink+'"/></pattern>'+
+    '<linearGradient id="'+id+'f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity=".7"/></linearGradient>'+
+    '<mask id="'+id+'m"><rect width="400" height="250" fill="url(#'+id+'f)"/></mask></defs>'+
+    '<rect width="400" height="250" fill="'+p.bg+'"/><rect width="400" height="250" fill="url(#'+id+'g)"/>';
+  var nb=3+Math.floor(r()*3);
+  for(i=0;i<nb;i++){var tx=50+r()*300,bx=tx+(r()-.5)*280,w=60+r()*70;
+    s+='<polygon points="'+(tx-5).toFixed(0)+',0 '+(tx+5).toFixed(0)+',0 '+(bx+w/2).toFixed(0)+',250 '+(bx-w/2).toFixed(0)+',250" fill="'+(i%3===2?p.ink:p.li)+'" opacity="'+(i%3===2?.13:.42)+'"/>';}
+  s+='<rect width="400" height="250" fill="url(#'+id+'p)" mask="url(#'+id+'m)" opacity=".6"/>';
+  if(a.band.indexOf("synth")>-1&&a.band.length<3){for(i=0;i<7;i++)s+='<path d="M200 96 L'+(i*70-10)+' 250" stroke="'+p.li+'" stroke-width="1.600" opacity=".9"/>';}
+  s+='<g fill="'+p.ink+'" stroke="'+p.ink+'" stroke-width="0">';
+  var front=a.band.filter(function(x){return x!=="drums";}),back=a.band.filter(function(x){return x==="drums";});
+  back.forEach(function(x,k){var bx2=back.length===1?200:(k?268:132);s+=fig("drums",bx2,198,.74,false,Math.floor(r()*4),p.li);});
+  var solo=a.band.length===1,n=front.length;
+  front.forEach(function(x,k){
+    var fx=solo?200:(200+(k-(n-1)/2)*(n>3?74:n>2?96:120));
+    s+=fig(x,fx,solo?236:222,solo?1.450:1.020,k%2===1&&x!=="bass",Math.floor(r()*4),p.li);
+  });
+  for(i=0;i<17;i++){var cx=i*25+r()*12-6,cy=(solo?240:232)+r()*12,cr=9+r()*5;
+    s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+cr.toFixed(1)+'"/><rect x="'+(cx-cr*1.300).toFixed(1)+'" y="'+cy.toFixed(1)+'" width="'+(cr*2.600).toFixed(1)+'" height="40" rx="6"/>';
+    if(r()<.34){var hx=cx+(r()-.5)*26,hy=cy-24-r()*18;
+      s+='<path d="M'+(cx+cr*.8).toFixed(1)+' '+(cy+8).toFixed(1)+' L'+hx.toFixed(1)+' '+hy.toFixed(1)+'" fill="none" stroke-width="5.500" stroke-linecap="round"/>';
+      if(r()<.4)s+='<rect x="'+(hx-4).toFixed(1)+'" y="'+(hy-11).toFixed(1)+'" width="8" height="12" rx="1.500" fill="'+p.li+'" stroke="none"/>';}
+  }
+  return s+'<rect y="246" width="400" height="4"/></g></svg>';
+}
+
+/* ================= dates ================= */
+var today=new Date();today.setHours(0,0,0,0);
+var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function dateFor(o){var d=new Date(today);d.setDate(d.getDate()+o);return d;}
+function dow(o){return DOW[dateFor(o).getDay()];}
+function dayWord(o){return o===0?"Tonight":o===1?"Tomorrow":o<7&&o>1?dow(o):dow(o)+" "+dateFor(o).getDate()+" "+MON[dateFor(o).getMonth()];}
+function clock(t){var p=t.split(":"),h=+p[0];return (h%12||12)+(p[1]==="00"?"":":"+p[1])+(h>=12?"pm":"am");}
+function monday(){var d=new Date(today);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime();}
+function dblock(o){var d=dateFor(o);return '<span class="dblock"><i>'+DOW[d.getDay()]+'</i><b>'+d.getDate()+'</b><i>'+MON[d.getMonth()]+'</i></span>';}
+
+/* ================= state ================= */
+function fresh(){return {hypes:[],following:[],going:[],addedGigs:[],addedArtists:[]};}
+var S=fresh(),ui={tab:"gigs",day:0,group:"All",venue:null,stamp:null,deck:null,deckAt:0,playing:false,range:"week",story:null,seen:{},role:"artist"};
+try{var raw=localStorage.getItem(KEY);if(raw){var o=JSON.parse(raw);if(o&&typeof o==="object")for(var k in S)if(Array.isArray(o[k]))S[k]=o[k];}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function prune(){var now=Date.now();S.hypes=S.hypes.filter(function(h){return now-h.t<WEEK;});}
+prune();
+
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function artists(){return ARTISTS.concat(S.addedArtists);}
+function gigs(){return GIGS.concat(S.addedGigs);}
+function artist(id){return artists().filter(function(a){return a.id===id;})[0];}
+function venue(id){return VENUES.filter(function(v){return v.id===id;})[0];}
+function gig(id){return gigs().filter(function(g){return g.id===id;})[0];}
+function upcoming(){return gigs().filter(function(g){return g.day>=0;}).sort(function(a,b){return a.day-b.day||a.time.localeCompare(b.time);});}
+function gigsFor(id){return upcoming().filter(function(g){return g.lineup.indexOf(id)>-1;});}
+function eligible(a){return gigsFor(a.id).some(function(g){return !g.pending;});}
+function myHype(id){return S.hypes.filter(function(h){return h.a===id;})[0];}
+function left(){var m=monday();return Math.max(0,MAX-S.hypes.filter(function(h){return h.t>=m;}).length);}
+function points(a){return a.hypes+(myHype(a.id)?1:0);}
+function ranked(){return artists().filter(eligible).sort(function(a,b){return points(b)-points(a)||a.name.localeCompare(b.name);});}
+function rankOf(a){var r=ranked();for(var i=0;i<r.length;i++)if(r[i].id===a.id)return i+1;return 0;}
+function has(l,id){return l.indexOf(id)>-1;}
+function flip(l,id){var i=l.indexOf(id);if(i>-1){l.splice(i,1);return false;}l.push(id);return true;}
+function money(p){return p===0?"Free":"£"+p;}
+function slug(a){return a.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
+function names(g,from){return g.lineup.slice(from||0).map(function(id){return artist(id).name;});}
+
+/* ================= pieces ================= */
+function hypeRound(a){var on=!!myHype(a.id),dis=(!eligible(a)||(!on&&left()===0))?" disabled":"";
+  return '<button class="round h" data-act="hype" data-id="'+a.id+'" aria-pressed="'+on+'" aria-label="'+(on?"Take back hype for ":"Hype ")+esc(a.name)+'"'+dis+'>'+ic("flame")+'</button>';}
+function stampHTML(id,txt){return '<span class="stamp'+(ui.stamp===id?" fresh":"")+'" aria-hidden="true">'+(txt||"Hyped")+'</span>';}
+function gigCard(g){
+  var v=venue(g.venue),head=artist(g.lineup[0]),rest=names(g,1),going=has(S.going,g.id);
+  var hyped=g.lineup.filter(function(id){return myHype(id);})[0];
+  var total=g.lineup.reduce(function(n,id){return n+points(artist(id));},0);
+  return '<article class="gig"><button class="shot" data-act="gig" data-id="'+g.id+'">'+art(head)+
+    '<span class="tag l">'+dayWord(g.day)+" "+clock(g.time)+'</span><span class="tag r">'+money(g.price)+'</span>'+(g.pending?'<span class="tag p">Being checked</span>':"")+(hyped?stampHTML(hyped):"")+
+    '<span class="title"><b>'+esc(head.name)+'</b>'+(rest.length?'<i>+ '+esc(rest.join(", "))+'</i>':"")+'</span></button>'+
+    '<div class="foot"><span class="place">'+esc(v.name)+'<i>'+esc(v.area)+'</i></span><span class="count" aria-label="'+total+' hypes">'+ic("flame")+total+'</span>'+
+    '<button class="round" data-act="going" data-id="'+g.id+'" aria-pressed="'+going+'" aria-label="'+(going?"Going. Tap to remove":"I\'m going")+'">'+ic(going?"check":"plus")+'</button></div></article>';
+}
+function gigRow(g,who){
+  var v=venue(g.venue);
+  return '<button class="grow" data-act="gig" data-id="'+g.id+'">'+dblock(g.day)+'<span class="nm"><b>'+esc(who?names(g).join(", "):v.name)+'</b><i>'+(who?esc(v.name)+", ":"")+clock(g.time)+", "+money(g.price)+'</i></span>'+ic("go")+'</button>';
+}
+function nextLine(a){var n=gigsFor(a.id)[0];return n?dayWord(n.day)+" at "+esc(venue(n.venue).name):"No gigs listed";}
+
+/* ================= views ================= */
+function viewGigs(){
+  var h='<div class="days" role="group" aria-label="Day">',d;
+  for(d=0;d<7;d++)h+='<button class="day" data-act="day" data-id="'+d+'" aria-pressed="'+(ui.day===d)+'"><i>'+(d===0?"Today":dow(d))+'</i><b>'+dateFor(d).getDate()+'</b></button>';
+  h+='<button class="day all" data-act="day" data-id="all" aria-pressed="'+(ui.day==="all")+'">All</button></div>';
+  h+='<div class="chips" role="group" aria-label="Genre">'+GROUPS.map(function(x){return '<button class="chip" data-act="group" data-id="'+x+'" aria-pressed="'+(ui.group===x)+'">'+x+'</button>';}).join("")+'</div>';
+  h+='<div class="head"><h2>Backed this week</h2><button data-act="tab" data-id="chart">Chart'+ic("go")+'</button></div><div class="rail">';
+  ranked().slice(0,8).forEach(function(a,i){h+='<button class="face" data-act="story" data-id="'+a.id+'" aria-label="'+esc(a.name)+', number '+(i+1)+'. Play story"><span class="wrap'+(ui.seen[a.id]?" seen":"")+'"><span class="ph">'+art(a)+'</span><span class="n">'+(i+1)+'</span></span><em>'+esc(a.name)+'</em></button>';});
+  h+='</div>';
+  var list=upcoming().filter(function(g){
+    if(ui.day!=="all"&&g.day!==ui.day)return false;
+    return ui.group==="All"||g.lineup.some(function(id){return artist(id).group===ui.group;});});
+  h+='<div class="head"><h2>'+(ui.day==="all"?"Coming up":ui.day===0?"Tonight":ui.day===1?"Tomorrow":dayWord(ui.day))+'</h2><span class="muted">'+list.length+(list.length===1?" gig":" gigs")+'</span></div>';
+  h+=list.length?'<div class="feed" style="margin-top:0">'+list.map(gigCard).join("")+'</div>':'<div class="empty" style="margin-top:0">Nothing listed yet.</div>';
+  return h+'<button class="addgig" style="margin-top:16px" data-act="add">'+ic("plus")+'Add a gig</button>';
+}
+function viewMap(){
+  var c={},tn={},lim=ui.range==="tonight"?0:6;
+  upcoming().forEach(function(g){if(g.pending)return;if(g.day<=lim)c[g.venue]=(c[g.venue]||0)+1;if(g.day===0)tn[g.venue]=1;});
+  if(!ui.venue||ui.pickedBy!=="user")ui.venue=VENUES.slice().sort(function(a,b){return (c[b.id]||0)-(c[a.id]||0);})[0].id;
+  var h='<div class="chips" style="margin-top:4px;margin-bottom:12px" role="group" aria-label="When"><button class="chip" data-act="range" data-id="tonight" aria-pressed="'+(ui.range==="tonight")+'">Tonight</button><button class="chip" data-act="range" data-id="week" aria-pressed="'+(ui.range==="week")+'">This week</button></div>';
+  h+='<div class="map"><svg class="base" viewBox="0 0 600 470" preserveAspectRatio="none" aria-hidden="true">'+
+    '<ellipse cx="325" cy="205" rx="120" ry="95" fill="#FF5C9A" opacity=".14"/><ellipse cx="300" cy="380" rx="105" ry="62" fill="#F8DF3A" opacity=".18"/><ellipse cx="490" cy="250" rx="85" ry="120" fill="#4FD9A0" opacity=".15"/><ellipse cx="55" cy="290" rx="80" ry="110" fill="#3EC6F0" opacity=".14"/>'+
+    '<path d="M105 0 C150 110 120 240 150 350 C162 400 150 440 158 470 L214 470 C200 430 224 390 205 330 C180 230 215 120 175 0Z" fill="var(--river)"/>'+
+    '<g stroke="var(--road)" stroke-width="4" fill="none" stroke-linecap="round"><path d="M218 115 L570 85"/><path d="M226 205 L590 300"/><path d="M240 30 L330 450"/><path d="M425 60 L475 440"/><path d="M216 315 L430 410"/><path d="M15 215 L112 365"/><path d="M330 120 L420 300"/><path d="M250 290 L560 200"/></g>'+
+    '<text x="232" y="100">Ropewalks</text><text x="222" y="432">Baltic Triangle</text><text x="425" y="392">Georgian Qtr</text><text x="8" y="215">Birkenhead</text></svg>';
+  VENUES.forEach(function(v){var n=c[v.id]||0;h+='<button class="pin'+(n?"":" none")+(tn[v.id]?" tonight":"")+(v.x<130?" edge":"")+'" style="left:'+(v.x/6)+'%;top:'+(v.y/4.7)+'%" data-act="pick" data-id="'+v.id+'" data-name="'+esc(v.name)+'" aria-pressed="'+(ui.venue===v.id)+'" aria-label="'+esc(v.name)+", "+n+' gigs">'+n+'</button>';});
+  h+='</div><p class="legend"><i></i>Gig on tonight</p>';
+  var v=venue(ui.venue),gs=upcoming().filter(function(g){return g.venue===v.id&&!g.pending&&(ui.range==="week"||g.day===0);});
+  h+='<div class="vhead"><span><b>'+esc(v.name)+'</b><span class="muted">'+esc(v.area)+", "+v.cap+' capacity</span></span><button class="btn sm ghost" data-act="venue" data-id="'+v.id+'">Venue</button></div>';
+  h+=gs.length?'<div class="minis">'+gs.map(function(g){return '<button class="mini" data-act="gig" data-id="'+g.id+'"><span class="ph">'+art(artist(g.lineup[0]))+'</span><b>'+esc(artist(g.lineup[0]).name)+'</b><i>'+dayWord(g.day)+" "+clock(g.time)+'</i></button>';}).join("")+'</div>':'<p class="muted">Nothing on '+(ui.range==="tonight"?"tonight":"yet")+'.</p>';
+  h+='<div class="head"><h2>All venues</h2><span class="muted">'+VENUES.length+'</span></div>';
+  VENUES.slice().sort(function(a,b){return (c[b.id]||0)-(c[a.id]||0);}).forEach(function(x){var nx=upcoming().filter(function(g){return g.venue===x.id&&!g.pending;})[0],n=c[x.id]||0;
+    h+='<div class="lrow">'+(nx?'<span class="th">'+art(artist(nx.lineup[0]))+'</span>':'<span class="tile">'+ic("pin")+'</span>')+'<button class="nm" data-act="venue" data-id="'+x.id+'"><b>'+esc(x.name)+'</b><i>'+esc(x.area)+(nx?". Next: "+esc(artist(nx.lineup[0]).name):"")+'</i></button><span class="muted">'+n+(n===1?" gig":" gigs")+'</span></div>';});
+  return h;
+}
+function nudge(){
+  var n=left();
+  if(!n)return '<div class="nudge done"><span><b>All three spent</b><i>Fresh hypes on Monday</i></span></div>';
+  var d=deckList().slice(0,3);
+  return '<button class="nudge" data-act="discover"><span class="stack">'+d.map(function(a){return '<span>'+art(a)+'</span>';}).join("")+'</span><span><b>'+n+(n===1?" hype":" hypes")+' left</b><i>Find someone new</i></span>'+ic("go")+'</button>';
+}
+function viewChart(){
+  var r=ranked(),a=r[0];
+  var h='<div class="head" style="margin-top:8px"><h2>Backed this week</h2><button data-act="rules" aria-label="How hype works">'+ic("info")+'</button></div>'+nudge();
+  if(!a)return h+'<div class="empty">No gigs listed, so nobody to back yet.</div>';
+  h+='<div class="king" data-row="'+a.id+'"><button class="shot" data-act="artist" data-id="'+a.id+'">'+art(a)+'<span class="num" aria-hidden="true">1</span>'+(myHype(a.id)?stampHTML(a.id):"")+'<span class="title"><b>'+esc(a.name)+'</b><i>'+nextLine(a)+'</i></span></button>'+
+     '<div class="foot"><span class="place">'+esc(a.genre)+'<i>'+esc(a.from)+'</i></span><span class="count">'+ic("flame")+points(a)+'</span>'+hypeRound(a)+'</div></div><ol class="rows" start="2">';
+  r.slice(1).forEach(function(x,i){
+    var pos=i+2,mv=x.yday?x.yday-pos:null,m=mv===null?'<i>new</i>':mv>0?'<i class="up">▲'+mv+'</i>':mv<0?'<i class="dn">▼'+(-mv)+'</i>':'<i>–</i>';
+    h+='<li data-row="'+x.id+'"><span class="rk">'+pos+m+'</span><button class="th" data-act="artist" data-id="'+x.id+'" aria-label="'+esc(x.name)+'">'+art(x)+'</button>'+
+       '<button class="nm" data-act="artist" data-id="'+x.id+'"><b>'+esc(x.name)+'</b><i>'+nextLine(x)+'</i></button><span class="count">'+ic("flame")+points(x)+'</span>'+hypeRound(x)+'</li>';});
+  return h+'</ol>';
+}
+function viewYou(){
+  var n=left(),h='<div class="me"><span class="big" role="img" aria-label="'+n+' of 3 hypes left">',i;
+  for(i=0;i<MAX;i++)h+=ic("flame",i<n?"":"spent");
+  h+='</span><span><b>'+n+(n===1?" hype":" hypes")+' left</b><span class="muted">Fresh ones every Monday</span></span></div>';
+  if(S.hypes.length){h+='<div class="head"><h2>Backing now</h2></div>';
+    S.hypes.forEach(function(x){var a=artist(x.a);if(!a)return;var dl=Math.max(1,Math.ceil((WEEK-(Date.now()-x.t))/864e5));
+      h+='<div class="lrow"><button class="th" data-act="artist" data-id="'+a.id+'" aria-label="'+esc(a.name)+'">'+art(a)+'</button><button class="nm" data-act="artist" data-id="'+a.id+'"><b>'+esc(a.name)+'</b><i>Counts for '+dl+" more "+(dl===1?"day":"days")+'</i></button></div>';});}
+  var going=upcoming().filter(function(g){return has(S.going,g.id);});
+  h+='<div class="head"><h2>Going</h2></div>'+(going.length?'<div class="minis">'+going.map(function(g){return '<button class="mini" data-act="gig" data-id="'+g.id+'"><span class="ph">'+art(artist(g.lineup[0]))+'</span><b>'+esc(artist(g.lineup[0]).name)+'</b><i>'+dayWord(g.day)+", "+esc(venue(g.venue).name)+'</i></button>';}).join("")+'</div>':'<div class="empty" style="margin-top:0">Tap '+ic("plus")+' on a gig to save it here.</div>');
+  var fol=artists().filter(function(a){return has(S.following,a.id);});
+  h+='<div class="head"><h2>Following</h2></div>'+(fol.length?'<div class="rail">'+fol.map(function(a){return '<button class="face" data-act="artist" data-id="'+a.id+'"><span class="wrap"><span class="ph">'+art(a)+'</span></span><em>'+esc(a.name)+'</em></button>';}).join("")+'</div>':'<div class="empty" style="margin-top:0">Follow an artist and you hear first when they announce a gig.</div>');
+  return h+'<p style="display:flex;gap:18px"><button class="link" data-act="about">About this prototype</button><button class="link" data-act="reset">Reset</button></p>';
+}
+
+/* ================= sheets ================= */
+var X='<button class="close" data-act="close" aria-label="Close">'+ic("x")+'</button>';
+function plainTop(t){return '<div class="ptop"><h2>'+t+'</h2>'+X+'</div>';}
+function sheetGig(g){
+  var v=venue(g.venue),a=artist(g.lineup[0]),going=has(S.going,g.id);
+  return X+'<div class="shot">'+art(a)+'<span class="tag l">'+money(g.price)+'</span><span class="title"><b>'+esc(a.name)+'</b>'+(g.lineup.length>1?'<i>+ '+esc(names(g,1).join(", "))+'</i>':"")+'</span></div><div class="pad">'+
+    '<p class="info" style="margin-top:0">'+ic("clock")+dayWord(g.day)+", doors "+clock(g.time)+'</p><button class="info" data-act="venue" data-id="'+v.id+'">'+ic("pin")+esc(v.name)+", "+esc(v.area)+'</button>'+
+    '<div class="acts"><button class="btn wide go" data-act="going" data-id="'+g.id+'" aria-pressed="'+going+'">'+ic(going?"check":"plus")+(going?"Going":"I\'m going")+'</button><button class="btn wide ghost" data-act="tickets">'+ic("ticket")+'Tickets</button><button class="sq" data-act="sharegig" data-id="'+g.id+'" aria-label="Share this gig">'+ic("share")+'</button></div>'+
+    '<h3>Line-up</h3>'+g.lineup.map(function(id){var x=artist(id);return '<div class="lrow"><button class="th" data-act="artist" data-id="'+x.id+'" aria-label="'+esc(x.name)+'">'+art(x)+'</button><button class="nm" data-act="artist" data-id="'+x.id+'"><b>'+esc(x.name)+'</b><i>'+esc(x.genre)+'</i></button><span class="count">'+ic("flame")+points(x)+'</span>'+hypeRound(x)+'</div>';}).join("")+'</div>';
+}
+function sheetArtist(a){
+  var gs=gigsFor(a.id),fol=has(S.following,a.id),on=!!myHype(a.id),ok=eligible(a),rk=rankOf(a);
+  var dis=(!ok||(!on&&left()===0))?" disabled":"";
+  return X+'<div class="shot">'+art(a)+(on?stampHTML(a.id):"")+'<span class="title"><b>'+esc(a.name)+'</b></span></div><div class="pad">'+
+    '<div class="pills"><span class="pill">'+esc(a.genre)+'</span><span class="pill">'+esc(a.from)+'</span></div>'+
+    '<div class="stats"><div><b>'+points(a)+'</b><i>hypes this week</i></div><div><b>'+(rk?"No. "+rk:"–")+'</b><i>in Liverpool</i></div><div><b>'+a.followers+'</b><i>followers</i></div></div>'+
+    '<div class="acts"><button class="btn wide hy" data-act="hype" data-id="'+a.id+'" aria-pressed="'+on+'"'+dis+'>'+ic("flame")+(on?"Hyped":ok?"Hype":"No gig to back")+'</button>'+
+    '<button class="btn ghost flw" data-act="follow" data-id="'+a.id+'" aria-pressed="'+fol+'">'+(fol?ic("check")+"Following":"Follow")+'</button>'+
+    '<button class="sq" data-act="sharecard" data-id="'+a.id+'" aria-label="Share"'+(ok?"":" disabled")+'>'+ic("share")+'</button></div>'+
+    '<p class="bio">'+esc(a.blurb)+'</p><h3>Next up</h3>'+(gs.length?gs.map(function(g){return gigRow(g,false);}).join(""):'<p class="muted">Nothing listed. Follow them to hear when that changes.</p>')+
+    '<h3>Listen</h3><div class="pills"><button class="pill" data-act="listen">Bandcamp</button><button class="pill" data-act="listen">Spotify</button><button class="pill" data-act="listen">Instagram</button></div>'+
+    '<button class="link" data-act="claim" data-id="'+a.id+'">Is this you? Claim this page</button></div>';
+}
+function sheetVenue(v){var gs=upcoming().filter(function(g){return g.venue===v.id;});
+  return '<div class="pad plain">'+plainTop(esc(v.name))+'<div class="pills"><span class="pill">'+esc(v.area)+'</span><span class="pill">'+v.cap+' capacity</span></div><h3>Coming up</h3>'+(gs.length?gs.map(function(g){return gigRow(g,true);}).join(""):'<p class="muted">Nothing listed yet.</p>')+'</div>';}
+function sheetRules(){
+  return '<div class="pad plain">'+plainTop("How hype works")+'<ul class="rules">'+
+   '<li>'+ic("flame")+'<span>Three hypes a week<i>Fresh ones every Monday.</i></span></li>'+
+   '<li>'+ic("user")+'<span>One per artist<i>So a big number means a lot of different people.</i></span></li>'+
+   '<li>'+ic("cal")+'<span>Only artists with a Liverpool gig coming up<i>You back them before the show, to help fill the room.</i></span></li>'+
+   '<li>'+ic("clock")+'<span>A hype counts for seven days<i>Then it fades, so the chart shows who people back right now.</i></span></li></ul></div>';}
+function sheetAbout(){
+  return '<div class="pad plain">'+plainTop("About this prototype")+'<ul class="rules">'+
+   '<li>'+ic("pin")+'<span>Venues are real. Gigs and artists are made up.</span></li>'+
+   '<li>'+ic("user")+'<span>The pictures are generated poster art.<i>In the real app each artist uploads their own photo.</i></span></li>'+
+   '<li>'+ic("play")+'<span>Clips are silent here.<i>The real app plays 20 seconds the artist picks.</i></span></li>'+
+   '<li>'+ic("check")+'<span>Your taps are saved in this browser only.</span></li></ul></div>';}
+function sheetClaim(a){
+  return '<div class="pad plain">'+plainTop("Claim "+esc(a.name))+'<ul class="rules">'+
+   '<li>'+ic("check")+'<span>Prove it is you<i>Post a code from the band\'s Instagram.</i></span></li>'+
+   '<li>'+ic("user")+'<span>Add your photo, clip and links</span></li>'+
+   '<li>'+ic("plus")+'<span>List your own gigs<i>Before the ticket sites have them.</i></span></li>'+
+   '<li>'+ic("bars")+'<span>See who is backing you each week</span></li></ul><div class="acts"><button class="btn wide" data-act="artist" data-id="'+a.id+'">Back</button></div></div>';}
+function sheetShare(a){var rk=rankOf(a),n=gigsFor(a.id)[0];
+  return '<div class="pad plain">'+plainTop("Share card")+'<div class="story"><div class="shot">'+art(a)+'</div><div class="body"><div class="big">No. '+rk+' in Liverpool this week</div><div class="who">'+esc(a.name)+'</div>'+
+    (n?'<div class="sm">'+dayWord(n.day)+" at "+esc(venue(n.venue).name)+'</div>':"")+'<span class="url">gigly.app/hype/'+slug(a)+'</span></div></div>'+
+    '<div class="acts"><button class="btn wide" data-act="copy" data-id="'+a.id+'">'+ic("share")+'Copy hype link</button></div><p class="muted" style="margin-top:10px;text-align:center">Artists post this to their story.</p></div>';}
+function sheetStory(){
+  var st=ui.story,a=artist(st.list[st.at]),g=gigsFor(a.id)[0],on=!!myHype(a.id),rk=rankOf(a),dis=(!on&&left()===0)?" disabled":"";
+  return '<div class="sv"><div class="sv-art">'+art(a)+'</div><div class="sv-shade"></div>'+
+    '<div class="sv-bars" aria-hidden="true">'+st.list.map(function(x,k){return '<i class="'+(k<st.at?"done":k===st.at?"now":"")+'"><b></b></i>';}).join("")+'</div>'+
+    '<button class="sv-zone l" data-act="sprev" aria-label="Previous artist"></button><button class="sv-zone r" data-act="snext" aria-label="Next artist"></button>'+
+    '<div class="sv-top"><span class="th">'+art(a)+'</span><span>'+esc(a.name)+'<i>No. '+rk+' this week</i></span><button class="close" data-act="close" aria-label="Close">'+ic("x")+'</button></div>'+
+    (on?stampHTML(a.id):"")+
+    '<div class="sv-bot"><span class="clip"><span class="eq"><i></i><i></i><i></i><i></i></span>Clip playing</span><h2>'+esc(a.name)+'</h2><p>'+esc(a.genre)+" from "+esc(a.from)+'</p>'+
+    (g?'<p class="info">'+ic("cal")+dayWord(g.day)+" at "+esc(venue(g.venue).name)+", "+money(g.price)+'</p>':"")+
+    '<div class="acts"><button class="btn wide hy" data-act="hype" data-id="'+a.id+'" aria-pressed="'+on+'"'+dis+'>'+ic("flame")+(on?"Hyped":"Hype")+'</button><button class="btn ghost" data-act="artist" data-id="'+a.id+'">Page</button></div></div></div>';
+}
+function results(q){
+  q=q.trim().toLowerCase();var h="";
+  var as=artists().filter(function(a){return !q||a.name.toLowerCase().indexOf(q)>-1||a.genre.toLowerCase().indexOf(q)>-1;}).sort(function(a,b){return a.name.localeCompare(b.name);}).slice(0,q?8:5);
+  var vs=q?VENUES.filter(function(v){return v.name.toLowerCase().indexOf(q)>-1||v.area.toLowerCase().indexOf(q)>-1;}):[];
+  as.forEach(function(a){h+='<div class="lrow"><span class="th">'+art(a)+'</span><button class="nm" data-act="artist" data-id="'+a.id+'"><b>'+esc(a.name)+'</b><i>'+esc(a.genre)+". "+nextLine(a)+'</i></button></div>';});
+  vs.forEach(function(v){h+='<div class="lrow"><span class="tile">'+ic("pin")+'</span><button class="nm" data-act="venue" data-id="'+v.id+'"><b>'+esc(v.name)+'</b><i>'+esc(v.area)+'</i></button></div>';});
+  if(!h)h='<div class="empty">Nobody by that name yet.<br><button class="btn sm" data-act="add">Add their gig</button></div>';
+  return h;
+}
+function sheetSearch(){return '<div class="pad plain" style="min-height:70vh">'+plainTop("Search")+'<label class="sbox">'+ic("search")+'<input id="q" type="search" placeholder="Band, genre or venue" autocomplete="off" aria-label="Search bands, genres and venues"></label><div id="results" style="margin-top:8px">'+results("")+'</div></div>';}
+function sheetSent(){
+  return '<div class="pad plain">'+plainTop("Sent for checking")+'<ul class="rules">'+
+   '<li>'+ic("clock")+'<span>Every new gig is checked before anyone else sees it<i>Usually the same day. Until then only you can see it.</i></span></li>'+
+   '<li>'+ic("check")+'<span>'+(ui.role==="fan"?"Artists and venues can skip the queue":"Claim your page to skip the queue")+'<i>Once a page is proven to be theirs, their gigs go live straight away.</i></span></li></ul>'+
+   '<div class="acts"><button class="btn wide" data-act="close">Done</button></div></div>';
+}
+function deckList(){return artists().filter(function(a){return eligible(a)&&!myHype(a.id);}).sort(function(a,b){return a.hypes-b.hypes||gigsFor(a.id)[0].day-gigsFor(b.id)[0].day;});}
+function sheetDeck(){
+  var d=ui.deck,i=ui.deckAt,n=left();
+  if(!n||i>=d.length)return '<div class="pad plain">'+plainTop(n?"That\'s everyone":"All three spent")+'<p class="muted">'+(n?"You have seen everyone playing soon.":"Fresh hypes on Monday.")+'</p><div class="acts"><button class="btn wide" data-act="tab" data-id="chart">See the chart</button></div></div>';
+  var a=artist(d[i]),g=gigsFor(a.id)[0],on=!!myHype(a.id);
+  return '<div class="pad plain">'+plainTop(n+(n===1?" hype":" hypes")+" left")+'<div class="dots" aria-hidden="true">'+d.map(function(x,k){return '<i class="'+(k<=i?"on":"")+'"></i>';}).join("")+'</div>'+
+    '<div class="deck"><div class="shot">'+art(a)+'<button class="play" data-act="clip" aria-label="'+(ui.playing?"Stop clip":"Play 20 second clip")+'">'+(ui.playing?'<span class="eq"><i></i><i></i><i></i><i></i></span>Playing':ic("play")+'20 sec clip')+'</button>'+(on?stampHTML(a.id):"")+
+    '<span class="title"><b>'+esc(a.name)+'</b><i>'+esc(a.genre)+" from "+esc(a.from)+'</i></span></div></div>'+
+    '<p class="info">'+ic("cal")+dayWord(g.day)+" at "+esc(venue(g.venue).name)+", "+money(g.price)+'</p>'+
+    '<div class="acts"><button class="btn wide ghost" data-act="skip">Skip</button><button class="btn wide hy" data-act="deckhype" data-id="'+a.id+'"'+(on?" disabled":"")+'>'+ic("flame")+'Hype</button></div></div>';
+}
+function sheetAdd(err,v,err2){
+  v=v||{name:"",venue:VENUES[0].id,day:0,time:"19:30",price:"5",link:""};var h='<div class="pad plain">'+plainTop("Add a gig");
+  h+='<div class="field"><span id="rl">You are</span><div class="seg" role="group" aria-labelledby="rl">'+[["artist","The artist"],["venue","Venue or promoter"],["fan","A fan"]].map(function(r){return '<button data-act="role" data-id="'+r[0]+'" aria-pressed="'+(ui.role===r[0])+'">'+r[1]+'</button>';}).join("")+'</div></div>';
+  h+='<label class="field"><span>Headline artist</span><input id="f-name" type="text" maxlength="40" autocomplete="off" value="'+esc(v.name)+'"></label>'+(err?'<p class="err">'+err+'</p>':"");
+  h+='<label class="field"><span>Venue</span><select id="f-venue">'+VENUES.map(function(x){return '<option value="'+x.id+'"'+(x.id===v.venue?" selected":"")+'>'+esc(x.name)+'</option>';}).join("")+'</select></label><label class="field"><span>Date</span><select id="f-day">';
+  for(var d=0;d<21;d++)h+='<option value="'+d+'"'+(d===+v.day?" selected":"")+'>'+dayWord(d)+'</option>';
+  h+='</select></label><label class="field"><span>Doors</span><input id="f-time" type="time" value="'+esc(v.time)+'"></label><label class="field"><span>Price in pounds, 0 for free</span><input id="f-price" type="number" min="0" max="50" step="1" inputmode="numeric" value="'+esc(v.price)+'"></label>';
+  h+='<label class="field"><span>Link to the gig'+(ui.role==="fan"?"":" (optional)")+'</span><input id="f-link" type="url" placeholder="Instagram post or ticket page" value="'+esc(v.link||"")+'"></label>'+(err2?'<p class="err">'+err2+'</p>':"");
+  return h+'<div class="acts"><button class="btn wide" data-act="add-save">Send for checking</button></div></div>';
+}
+
+/* ================= render ================= */
+var TABS=[["gigs","Gigs","cal"],["map","Map","map"],["chart","Chart","bars"],["you","You","user"]],open=null,lastFocus=null,clipTimer,svTimer;
+function storyTimer(){clearTimeout(svTimer);if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;svTimer=setTimeout(function(){if(open&&open.type==="story")act("snext");},6000);}
+function vals(){return {name:$("f-name").value.trim(),venue:$("f-venue").value,day:+$("f-day").value,time:$("f-time").value||"19:30",price:$("f-price").value,link:$("f-link").value.trim()};}
+function render(){
+  $("city").innerHTML=ic("pin")+"Liverpool";$("sbtn").innerHTML=ic("search");
+  $("tabs").innerHTML=TABS.map(function(t){return '<button class="tab" data-act="tab" data-id="'+t[0]+'"'+(ui.tab===t[0]?' aria-current="page"':"")+'>'+ic(t[2])+t[1]+'</button>';}).join("");
+  var n=left(),t="";for(var i=0;i<MAX;i++)t+=ic("flame",i<n?"":"spent");
+  $("tokens").innerHTML=t;$("tokens").setAttribute("aria-label",n+" of 3 hypes left. How hype works");
+  $("view").innerHTML=({gigs:viewGigs,map:viewMap,chart:viewChart,you:viewYou})[ui.tab]();
+  if(open)draw();ui.stamp=null;
+}
+function draw(){var s=open,h="";
+  if(s.type==="gig")h=sheetGig(gig(s.id));else if(s.type==="artist")h=sheetArtist(artist(s.id));else if(s.type==="venue")h=sheetVenue(venue(s.id));
+  else if(s.type==="rules")h=sheetRules();else if(s.type==="about")h=sheetAbout();else if(s.type==="claim")h=sheetClaim(artist(s.id));
+  else if(s.type==="share")h=sheetShare(artist(s.id));else if(s.type==="deck")h=sheetDeck();else if(s.type==="add")h=sheetAdd(s.err,s.vals,s.err2);else if(s.type==="story")h=sheetStory();else if(s.type==="search")h=sheetSearch();else if(s.type==="sent")h=sheetSent();
+  $("sheet").className="sheet"+(s.type==="story"?" full":"");$("sheet").innerHTML=h;if(s.type==="story")storyTimer();}
+function show(type,id,extra){if(!open)lastFocus=document.activeElement;open={type:type,id:id};if(extra){open.err=extra.err;open.vals=extra.vals;open.err2=extra.err2;}
+  $("scrim").hidden=false;draw();$("sheet").scrollTop=0;var c=$("sheet").querySelector(type==="add"?"#f-name":type==="search"?"#q":".close");if(c)c.focus({preventScroll:true});}
+function hide(){var was=open&&open.type;open=null;ui.playing=false;clearTimeout(clipTimer);clearTimeout(svTimer);$("sheet").className="sheet";if(was==="story")render();$("scrim").hidden=true;$("sheet").innerHTML="";if(lastFocus&&document.contains(lastFocus))lastFocus.focus({preventScroll:true});}
+var tt;function toast(m){var t=$("toast");t.className=open?"toast up":"toast";t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},3200);}
+function reflow(fn){var b={};document.querySelectorAll("[data-row]").forEach(function(el){b[el.getAttribute("data-row")]=el.getBoundingClientRect().top;});fn();
+  if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  document.querySelectorAll("[data-row]").forEach(function(el){var o=b[el.getAttribute("data-row")];if(o===undefined)return;var dy=o-el.getBoundingClientRect().top;if(!dy)return;
+    el.style.transform="translateY("+dy+"px)";el.style.transition="none";requestAnimationFrame(function(){requestAnimationFrame(function(){el.style.transition="transform .35s ease";el.style.transform="";});});});}
+function doHype(id){var a=artist(id),mine=myHype(id);
+  if(mine){S.hypes.splice(S.hypes.indexOf(mine),1);toast("Hype taken back");}
+  else if(left()>0&&eligible(a)){S.hypes.push({a:id,t:Date.now()});ui.stamp=id;var n=left();toast("Hyped "+a.name+". "+(n?n+" left this week":"That\'s all three"));}
+  save();}
+
+function act(a,id){
+  switch(a){
+    case "tab":ui.tab=id;hide();render();window.scrollTo(0,0);break;
+    case "day":ui.day=id==="all"?"all":+id;render();break;
+    case "group":ui.group=id;render();break;
+    case "pick":ui.venue=id;ui.pickedBy="user";render();break;
+    case "range":ui.range=id;ui.pickedBy=null;render();break;
+    case "story":var rl=ranked().slice(0,8).map(function(x){return x.id;});ui.story={list:rl,at:Math.max(0,rl.indexOf(id))};ui.seen[id]=true;show("story");break;
+    case "snext":if(ui.story.at>=ui.story.list.length-1){hide();}else{ui.story.at++;ui.seen[ui.story.list[ui.story.at]]=true;draw();}break;
+    case "sprev":if(ui.story.at>0)ui.story.at--;draw();break;
+    case "search":show("search");break;
+    case "role":var keep=vals();ui.role=id;show("add",null,{vals:keep});break;
+    case "sharegig":var gl="gigly.app/gig/"+slug(artist(gig(id).lineup[0])),y=function(){toast("Link copied. Send it to the group chat");},n2=function(){toast(gl);};
+      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText("https://"+gl).then(y,n2);else n2();}catch(e){n2();}break;
+
+    case "gig":case "artist":case "venue":case "claim":show(a,id);break;
+    case "sharecard":show("share",id);break;
+    case "rules":show("rules");break;case "about":show("about");break;case "add":show("add");break;
+    case "close":hide();break;
+    case "going":toast(flip(S.going,id)?"Saved to Going":"Removed");save();render();break;
+    case "follow":toast(flip(S.following,id)?"Following "+artist(id).name:"Unfollowed");save();render();break;
+    case "hype":doHype(id);reflow(render);break;
+    case "discover":ui.deck=deckList().slice(0,6).map(function(x){return x.id;});ui.deckAt=0;ui.playing=false;show("deck");break;
+    case "clip":ui.playing=!ui.playing;clearTimeout(clipTimer);if(ui.playing)clipTimer=setTimeout(function(){ui.playing=false;if(open&&open.type==="deck")draw();},5000);draw();break;
+    case "skip":ui.deckAt++;ui.playing=false;draw();break;
+    case "deckhype":doHype(id);ui.playing=false;render();setTimeout(function(){if(open&&open.type==="deck"){ui.deckAt++;draw();var c=$("sheet").querySelector(".close");if(c)c.focus({preventScroll:true});}},750);break;
+    case "tickets":toast("Opens whoever sells the tickets");break;
+    case "listen":toast("Opens the artist\'s own page");break;
+    case "copy":var link="gigly.app/hype/"+slug(artist(id)),ok=function(){toast("Link copied");},no=function(){toast(link);};
+      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText("https://"+link).then(ok,no);else no();}catch(e){no();}break;
+    case "add-save":var v=vals();
+      if(ui.role==="fan"&&v.name&&!v.link){show("add",null,{err2:"Add a link so we can check the gig is real.",vals:v});return;}
+      if(!v.name){show("add",null,{err:"Add the artist\'s name.",vals:v});return;}
+      var f=artists().filter(function(x){return x.name.toLowerCase()===v.name.toLowerCase();})[0];
+      if(!f){f={id:"u"+Date.now(),name:v.name,genre:"New on Gigly",group:"Indie",from:"Liverpool",followers:0,hypes:0,yday:0,pal:Math.floor(Math.random()*6),seed:Math.floor(Math.random()*9999)+1,band:["guitar","mic","drums"],blurb:"This page is waiting to be claimed."};S.addedArtists.push(f);}
+      S.addedGigs.push({id:"x"+Date.now(),day:v.day,time:v.time,venue:v.venue,lineup:[f.id],price:Math.max(0,Math.min(50,Math.round(+v.price)||0)),pending:true});
+      save();ui.tab="gigs";ui.day=v.day<7?v.day:"all";ui.group="All";render();show("sent");break;
+    case "reset":try{localStorage.removeItem(KEY);}catch(e){}S=fresh();ui.day=0;ui.group="All";render();toast("Reset");break;
+  }
+}
+document.addEventListener("click",function(e){
+  var el=e.target.closest("[data-act]");
+  if(el){if(el.disabled)return;var a=el.getAttribute("data-act"),id=el.getAttribute("data-id"),inS=$("sheet").contains(el);act(a,id);
+    if(!document.contains(el)&&(!!open)===inS){var again=(inS?$("sheet"):document).querySelector('[data-act="'+a+'"]'+(id?'[data-id="'+id+'"]':""));if(again&&!again.disabled)again.focus({preventScroll:true});}
+    return;}
+  if(e.target===$("scrim"))hide();
+});
+document.addEventListener("input",function(e){if(e.target&&e.target.id==="q")$("results").innerHTML=results(e.target.value);});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&open){hide();return;}
+  if(e.key==="Tab"&&open){var f=$("sheet").querySelectorAll("button:not([disabled]),input,select");if(!f.length)return;var a=f[0],z=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}
+});
+render();
+})();
+</script>
+</body>
+</html>

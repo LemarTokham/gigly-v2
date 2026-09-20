@@ -1,0 +1,477 @@
+{
+  "VENUES": [
+    {
+      "id": "jac",
+      "name": "The Jacaranda",
+      "area": "Ropewalks",
+      "cap": 150,
+      "x": 270,
+      "y": 150
+    },
+    {
+      "id": "ship",
+      "name": "The Shipping Forecast",
+      "area": "Ropewalks",
+      "cap": 200,
+      "x": 345,
+      "y": 180
+    },
+    {
+      "id": "ebgb",
+      "name": "EBGBs",
+      "area": "Ropewalks",
+      "cap": 250,
+      "x": 290,
+      "y": 235
+    },
+    {
+      "id": "kaz",
+      "name": "Kazimier Stockroom",
+      "area": "Ropewalks",
+      "cap": 100,
+      "x": 378,
+      "y": 255
+    },
+    {
+      "id": "qua",
+      "name": "Quarry",
+      "area": "Hardman Street",
+      "cap": 180,
+      "x": 460,
+      "y": 165
+    },
+    {
+      "id": "cale",
+      "name": "The Caledonia",
+      "area": "Georgian Quarter",
+      "cap": 80,
+      "x": 505,
+      "y": 285
+    },
+    {
+      "id": "k24",
+      "name": "24 Kitchen Street",
+      "area": "Baltic Triangle",
+      "cap": 400,
+      "x": 300,
+      "y": 365
+    },
+    {
+      "id": "fy",
+      "name": "Future Yard",
+      "area": "Birkenhead",
+      "cap": 280,
+      "x": 58,
+      "y": 295
+    }
+  ],
+  "ARTISTS": [
+    {
+      "id": "a1",
+      "name": "Dock Leaf",
+      "genre": "Indie rock",
+      "group": "Indie",
+      "from": "Wavertree",
+      "followers": 180,
+      "hypes": 41,
+      "yday": 3,
+      "pal": 0,
+      "seed": 11,
+      "band": [
+        "drums",
+        "guitar",
+        "mic",
+        "drums"
+      ],
+      "blurb": "Two drummers, no bassist. Loud, tuneful, done in 25 minutes."
+    },
+    {
+      "id": "a2",
+      "name": "Marzipan Riot",
+      "genre": "Punk",
+      "group": "Punk",
+      "from": "Bootle",
+      "followers": 420,
+      "hypes": 58,
+      "yday": 1,
+      "pal": 1,
+      "seed": 23,
+      "band": [
+        "guitar",
+        "mic",
+        "drums"
+      ],
+      "blurb": "Three chords and a megaphone. Every song is about landlords."
+    },
+    {
+      "id": "a3",
+      "name": "Velvet Ferry",
+      "genre": "Dream pop",
+      "group": "Indie",
+      "from": "Birkenhead",
+      "followers": 2600,
+      "hypes": 37,
+      "yday": 2,
+      "pal": 2,
+      "seed": 37,
+      "band": [
+        "synth",
+        "mic",
+        "guitar"
+      ],
+      "blurb": "Reverb-heavy pop written on the 6:40 ferry to work."
+    },
+    {
+      "id": "a4",
+      "name": "Low Tide Club",
+      "genre": "Jazz",
+      "group": "Jazz",
+      "from": "Toxteth",
+      "followers": 310,
+      "hypes": 29,
+      "yday": 6,
+      "pal": 3,
+      "seed": 41,
+      "band": [
+        "bass",
+        "drums",
+        "mic"
+      ],
+      "blurb": "Hard bop standards and originals, every other Sunday."
+    },
+    {
+      "id": "a5",
+      "name": "Nan's Carpet",
+      "genre": "Post-punk",
+      "group": "Punk",
+      "from": "Anfield",
+      "followers": 95,
+      "hypes": 33,
+      "yday": 8,
+      "pal": 4,
+      "seed": 53,
+      "band": [
+        "mic",
+        "guitar"
+      ],
+      "blurb": "Spoken word over bass loops. First gig was in a launderette."
+    },
+    {
+      "id": "a6",
+      "name": "Ozone Layer Cake",
+      "genre": "Electronic",
+      "group": "Electronic",
+      "from": "Baltic Triangle",
+      "followers": 1200,
+      "hypes": 26,
+      "yday": 4,
+      "pal": 5,
+      "seed": 67,
+      "band": [
+        "synth"
+      ],
+      "blurb": "Hardware-only sets. Nothing is synced and it still works."
+    },
+    {
+      "id": "a7",
+      "name": "The Overheads",
+      "genre": "Indie",
+      "group": "Indie",
+      "from": "Allerton",
+      "followers": 5400,
+      "hypes": 22,
+      "yday": 5,
+      "pal": 1,
+      "seed": 71,
+      "band": [
+        "guitar",
+        "mic",
+        "guitar",
+        "drums"
+      ],
+      "blurb": "The biggest small band in town, just back from a support tour."
+    },
+    {
+      "id": "a8",
+      "name": "Sister Bootle",
+      "genre": "Soul",
+      "group": "Soul",
+      "from": "Bootle",
+      "followers": 760,
+      "hypes": 30,
+      "yday": 7,
+      "pal": 3,
+      "seed": 83,
+      "band": [
+        "mic",
+        "bass",
+        "synth",
+        "mic"
+      ],
+      "blurb": "Seven-piece soul revue with a borrowed horn section."
+    },
+    {
+      "id": "a9",
+      "name": "Halfway to Hoylake",
+      "genre": "Folk",
+      "group": "Folk",
+      "from": "West Kirby",
+      "followers": 240,
+      "hypes": 18,
+      "yday": 10,
+      "pal": 4,
+      "seed": 97,
+      "band": [
+        "guitar",
+        "mic"
+      ],
+      "blurb": "Two voices, one guitar, songs about the Wirral coast."
+    },
+    {
+      "id": "a10",
+      "name": "Kirkdale Static",
+      "genre": "Shoegaze",
+      "group": "Indie",
+      "from": "Kirkdale",
+      "followers": 130,
+      "hypes": 24,
+      "yday": 9,
+      "pal": 5,
+      "seed": 101,
+      "band": [
+        "guitar",
+        "guitar",
+        "drums"
+      ],
+      "blurb": "Bring earplugs."
+    },
+    {
+      "id": "a11",
+      "name": "Tuebrook Tapes",
+      "genre": "Hip hop",
+      "group": "Hip hop",
+      "from": "Tuebrook",
+      "followers": 890,
+      "hypes": 27,
+      "yday": 0,
+      "pal": 0,
+      "seed": 113,
+      "band": [
+        "mic",
+        "synth",
+        "mic"
+      ],
+      "blurb": "A producer and two MCs. Beats from charity-shop cassettes."
+    },
+    {
+      "id": "a12",
+      "name": "Pier Head Choir of One",
+      "genre": "Singer-songwriter",
+      "group": "Folk",
+      "from": "Aigburth",
+      "followers": 60,
+      "hypes": 9,
+      "yday": 0,
+      "pal": 2,
+      "seed": 127,
+      "band": [
+        "mic"
+      ],
+      "blurb": "One woman, a loop pedal, twelve-part harmonies."
+    }
+  ],
+  "GIGS": [
+    {
+      "id": "g1",
+      "day": 0,
+      "time": "19:30",
+      "venue": "jac",
+      "lineup": [
+        "a1",
+        "a5"
+      ],
+      "price": 6
+    },
+    {
+      "id": "g2",
+      "day": 0,
+      "time": "20:00",
+      "venue": "cale",
+      "lineup": [
+        "a4"
+      ],
+      "price": 0
+    },
+    {
+      "id": "g3",
+      "day": 0,
+      "time": "22:00",
+      "venue": "k24",
+      "lineup": [
+        "a6",
+        "a11"
+      ],
+      "price": 8
+    },
+    {
+      "id": "g4",
+      "day": 1,
+      "time": "19:00",
+      "venue": "qua",
+      "lineup": [
+        "a10",
+        "a1"
+      ],
+      "price": 5
+    },
+    {
+      "id": "g5",
+      "day": 1,
+      "time": "20:00",
+      "venue": "fy",
+      "lineup": [
+        "a3",
+        "a9"
+      ],
+      "price": 10
+    },
+    {
+      "id": "g6",
+      "day": 2,
+      "time": "19:30",
+      "venue": "ebgb",
+      "lineup": [
+        "a2",
+        "a5",
+        "a10"
+      ],
+      "price": 7
+    },
+    {
+      "id": "g7",
+      "day": 2,
+      "time": "18:00",
+      "venue": "kaz",
+      "lineup": [
+        "a12"
+      ],
+      "price": 0
+    },
+    {
+      "id": "g8",
+      "day": 3,
+      "time": "20:00",
+      "venue": "ship",
+      "lineup": [
+        "a8"
+      ],
+      "price": 9
+    },
+    {
+      "id": "g9",
+      "day": 4,
+      "time": "19:30",
+      "venue": "jac",
+      "lineup": [
+        "a9",
+        "a12"
+      ],
+      "price": 4
+    },
+    {
+      "id": "g10",
+      "day": 5,
+      "time": "19:00",
+      "venue": "qua",
+      "lineup": [
+        "a7",
+        "a1"
+      ],
+      "price": 12
+    },
+    {
+      "id": "g11",
+      "day": 5,
+      "time": "21:00",
+      "venue": "k24",
+      "lineup": [
+        "a11"
+      ],
+      "price": 6
+    },
+    {
+      "id": "g12",
+      "day": 6,
+      "time": "20:00",
+      "venue": "cale",
+      "lineup": [
+        "a4",
+        "a8"
+      ],
+      "price": 0
+    },
+    {
+      "id": "g13",
+      "day": 9,
+      "time": "19:30",
+      "venue": "fy",
+      "lineup": [
+        "a2",
+        "a3"
+      ],
+      "price": 10
+    },
+    {
+      "id": "g14",
+      "day": 16,
+      "time": "20:00",
+      "venue": "ebgb",
+      "lineup": [
+        "a6"
+      ],
+      "price": 8
+    },
+    {
+      "id": "p1",
+      "day": -2,
+      "time": "19:30",
+      "venue": "ship",
+      "lineup": [
+        "a2",
+        "a1"
+      ],
+      "price": 6
+    },
+    {
+      "id": "p2",
+      "day": -6,
+      "time": "20:00",
+      "venue": "fy",
+      "lineup": [
+        "a7",
+        "a10"
+      ],
+      "price": 12
+    },
+    {
+      "id": "p3",
+      "day": -9,
+      "time": "20:00",
+      "venue": "cale",
+      "lineup": [
+        "a4"
+      ],
+      "price": 0
+    }
+  ],
+  "GROUPS": [
+    "All",
+    "Indie",
+    "Punk",
+    "Jazz",
+    "Electronic",
+    "Folk",
+    "Soul",
+    "Hip hop"
+  ]
+}

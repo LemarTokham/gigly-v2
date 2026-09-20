@@ -1,0 +1,88 @@
+# Gigly
+
+A what's-on guide for grassroots gigs in Liverpool, where fans hype local
+artists into a weekly chart. The unit is the **artist**, not the ticketed
+event, and the chart is about who is worth turning up for rather than what is
+selling.
+
+`gigly-prototype.html` is the design and behaviour spec. It is not built on and
+not edited.
+
+## Running it
+
+Needs Docker Desktop for the local Supabase stack.
+
+```sh
+npm install
+npm run db:start     # first run pulls ~10 images, takes a while
+npm run dev
+```
+
+`npm run db:start` prints a local Studio URL and a mail inbox URL, and writes
+nothing to your hosted project.
+
+### Scripts
+
+| script | does |
+| --- | --- |
+| `npm run db:start` / `db:stop` | local Supabase stack |
+| `npm run db:reset` | drop, replay all migrations, reseed |
+| `npm run db:types` | regenerate `src/lib/database.types.ts` |
+| `npm run db:push` | apply migrations to the hosted project |
+| `npm test` | hype rule tests against the local database |
+
+`scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
+socket under `$HOME` without anything being added to your shell profile.
+
+### Environment
+
+`.env.local` points at the local stack and holds no secrets — those
+credentials are the same on every local install. Hosted project keys live in
+`.env.production.local`, and go into Vercel at deploy time. Both are gitignored.
+
+## The hype rules
+
+All enforced in the database, not the UI. Assume people will try to cheat.
+
+- Three hypes per user per week, resetting Monday 00:00 **Europe/London** —
+  computed in London wall-clock time so the reset does not drift by an hour
+  under BST.
+- One live hype per artist per user. One row per pair, ever: re-hyping after
+  the window lapses updates `created_at` rather than inserting a second row.
+- Only artists with a `live` gig still to come can be hyped. Hyping opens when
+  the gig is listed and closes when it starts. Pending gigs do not count, so an
+  unapproved submission cannot lift anyone up the chart.
+- Every hype is worth exactly 1 point. No weighting by followers or capacity.
+- A hype counts for 7 days from when it was cast, then stops counting. Artist
+  scores are never reset; only the user's own allowance resets.
+- Taking a hype back returns it to the allowance.
+
+Writes go through `cast_hype()` and `take_back_hype()`; direct DML on `hypes`
+is revoked. The allowance cannot be enforced by an RLS policy alone — a policy
+is a per-row boolean with no serialisation, so two concurrent inserts both see
+"2 of 3 used" and both succeed. The functions take a transaction-scoped
+advisory lock keyed on the user.
+
+Error codes the UI branches on:
+
+| code | meaning |
+| --- | --- |
+| `GY001` | no hypes left this week |
+| `GY002` | already hyping this artist, still inside the 7 day window |
+| `GY003` | artist has no upcoming live gig |
+| `GY004` | no hype to take back |
+
+## Layout
+
+```
+supabase/migrations/   schema, policies, functions, views
+supabase/seed.sql      GENERATED — run scripts/generate-seed.mjs
+scripts/               seed generation, prototype data extraction, CLI wrapper
+src/lib/supabase/      browser, server and service-role clients
+tests/                 hype rules
+```
+
+Seed data is lifted from the prototype's `VENUES` / `ARTISTS` / `GIGS` arrays.
+Venues are real Liverpool rooms; artists and gigs are invented. Gig times are
+offsets from the date the seed runs, so a reset always yields a listing with
+gigs still to come.
