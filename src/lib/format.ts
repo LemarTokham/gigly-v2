@@ -139,3 +139,13 @@ export function nightRange(night: string): { start: Date; end: Date } {
 export function weekdayShort(night: string): string {
   return weekday.format(new Date(`${night}T00:00:00Z`));
 }
+
+/** Turn a date and a wall-clock time in London into an absolute instant. */
+export function londonDateTime(date: string, time: string): Date {
+  const [h, m] = time.split(":").map(Number);
+  const naive = Date.parse(
+    `${date}T${String(h).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}:00Z`,
+  );
+  const once = naive - londonOffsetMs(new Date(naive));
+  return new Date(naive - londonOffsetMs(new Date(once)));
+}

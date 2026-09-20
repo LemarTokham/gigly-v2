@@ -4,7 +4,14 @@ import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { signOut } from "@/lib/actions/auth";
 import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
-import { getHypeState, getMyFollowing, getMyGoing, getMyHypes, getUser } from "@/lib/queries";
+import {
+  getHypeState,
+  getMyFollowing,
+  getMyGoing,
+  getMyHypes,
+  getUser,
+  isAdminUser,
+} from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "You" };
@@ -30,12 +37,14 @@ export default async function YouPage() {
     );
   }
 
-  const [following, going, backing, hype] = await Promise.all([
+  const [following, going, backing, hype, admin] = await Promise.all([
     getMyFollowing(),
     getMyGoing(),
     getMyHypes(),
     getHypeState(),
+    isAdminUser(),
   ]);
+  const isAdmin = admin;
 
   return (
     <>
@@ -131,6 +140,20 @@ export default async function YouPage() {
         <div className="border-line text-soft rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
           Follow an artist and you hear first when they announce a gig.
         </div>
+      )}
+
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className="border-line bg-card mt-[22px] flex w-full items-center gap-3 rounded-2xl border p-3.5"
+        >
+          <Icon name="check" className="text-hype" />
+          <span>
+            <b className="block text-base leading-tight font-bold">Approvals</b>
+            <i className="text-soft block text-[13px] not-italic">Gigs waiting to be checked</i>
+          </span>
+          <Icon name="go" className="text-soft ml-auto" />
+        </Link>
       )}
 
       <form action={signOut} className="mt-6">

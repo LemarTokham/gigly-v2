@@ -14,7 +14,8 @@
     "db:types": "sh scripts/supabase.sh gen types typescript --local > src/lib/database.types.ts",
     "db:push": "sh scripts/supabase.sh db push",
     "test": "node --test \"tests/**/*.test.mts\"",
-    "seed:hypes": "node --env-file=.env.local scripts/seed-hypes.mjs"
+    "seed:hypes": "node --env-file=.env.local scripts/seed-hypes.mjs",
+    "make:admin": "node --env-file=.env.local scripts/make-admin.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -77,6 +77,8 @@ export async function getUpcomingGigs(opts: {
   night?: string | null;
   genre?: GenreGroup | null;
   limit?: number;
+  /** Include this user's own gigs that are still awaiting approval. */
+  viewerId?: string | null;
 } = {}): Promise<GigRow[]> {
   const db = await createClient();
 
@@ -93,9 +95,15 @@ export async function getUpcomingGigs(opts: {
   let q = db
     .from("gigs")
     .select(GIG_FIELDS)
-    .eq("status", "live")
     .gt("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
+
+  // RLS already hides other people's pending gigs, but an admin can see them
+  // all — so the feed is filtered explicitly rather than left to the policy,
+  // or an admin's what's-on page would fill up with everyone's submissions.
+  q = opts.viewerId
+    ? q.or(`status.eq.live,and(status.eq.pending,submitted_by.eq.${opts.viewerId})`)
+    : q.eq("status", "live");
 
   if (opts.night) {
     const { start, end } = nightRange(opts.night);
@@ -423,4 +431,11 @@ export async function getMyHypes() {
     ),
     artist: r.artist as unknown as SearchResults["artists"][number],
   }));
+}
+
+/** Whether the signed-in user can reach the approval queue. */
+export async function isAdminUser(): Promise<boolean> {
+  const db = await createClient();
+  const { data } = await db.rpc("is_admin");
+  return data ?? false;
 }

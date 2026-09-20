@@ -30,7 +30,8 @@ nothing to your hosted project.
 | `npm run db:types` | regenerate `src/lib/database.types.ts` |
 | `npm run db:push` | apply migrations to the hosted project |
 | `npm run seed:hypes` | synthetic users + hypes so the chart has data |
-| `npm test` | hype rules and date handling |
+| `npm run make:admin -- you@example.com` | grant the approval queue |
+| `npm test` | hype rules, social, submission, dates |
 
 `scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
 socket under `$HOME` without anything being added to your shell profile.
@@ -101,6 +102,22 @@ from it.
 
 Session checks use `getUser()`, never `getSession()`. `getSession()` trusts the
 cookie as it stands; `getUser()` revalidates it against the auth server.
+
+## Submitting a gig
+
+Submissions go through `submit_gig()`, one security definer function, rather
+than three client-side inserts. Creating the artist, the gig and the link
+between them has to be atomic, and keeping it server-side means `artists` can
+stay admin-only for direct writes while a signed-in user can still list a band
+that has no page yet.
+
+`status` and `submitted_by` are set inside the function, never taken from the
+caller, so nothing arrives pre-approved or under someone else's name. A pending
+gig is visible only to whoever submitted it, and `artist_is_hypeable` requires
+a live gig, so nothing in the queue can move the chart.
+
+`/admin` 404s rather than 403s for non-admins: a page that announces itself
+tells everyone it is there.
 
 ## Two things that are not the prototype
 

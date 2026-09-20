@@ -259,6 +259,7 @@ export type Database = {
           slug: string
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
+          submitted_as: string | null
           submitted_by: string | null
           ticket_url: string | null
           venue_id: string
@@ -270,6 +271,7 @@ export type Database = {
           slug: string
           starts_at: string
           status?: Database["public"]["Enums"]["gig_status"]
+          submitted_as?: string | null
           submitted_by?: string | null
           ticket_url?: string | null
           venue_id: string
@@ -281,6 +283,7 @@ export type Database = {
           slug?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["gig_status"]
+          submitted_as?: string | null
           submitted_by?: string | null
           ticket_url?: string | null
           venue_id?: string
@@ -470,7 +473,38 @@ export type Database = {
       hype_week_start: { Args: { p_at?: string }; Returns: string }
       hypes_remaining: { Args: never; Returns: number }
       is_admin: { Args: never; Returns: boolean }
+      slugify: { Args: { p_text: string }; Returns: string }
+      submit_gig: {
+        Args: {
+          p_artist_name: string
+          p_price_pence: number
+          p_starts_at: string
+          p_submitted_as?: string
+          p_ticket_url?: string
+          p_venue_id: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          price_pence: number
+          slug: string
+          starts_at: string
+          status: Database["public"]["Enums"]["gig_status"]
+          submitted_as: string | null
+          submitted_by: string | null
+          ticket_url: string | null
+          venue_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gigs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       take_back_hype: { Args: { p_artist_id: string }; Returns: undefined }
+      unique_artist_slug: { Args: { p_base: string }; Returns: string }
+      unique_gig_slug: { Args: { p_base: string }; Returns: string }
     }
     Enums: {
       genre_group:

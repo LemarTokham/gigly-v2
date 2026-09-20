@@ -11,6 +11,7 @@ import {
   getHypeState,
   getMyState,
   getUpcomingGigs,
+  getUser,
   GENRE_GROUPS,
   type GenreGroup,
 } from "@/lib/queries";
@@ -24,12 +25,13 @@ export default async function WhatsOn({
 }) {
   const sp = await searchParams;
   const today = todayNight();
+  const viewerId = (await getUser())?.id ?? null;
 
   const night = sp.night && /^\d{4}-\d{2}-\d{2}$/.test(sp.night) ? sp.night : null;
   const genre = GENRE_GROUPS.includes(sp.genre as GenreGroup) ? (sp.genre as GenreGroup) : null;
 
   const [gigs, chart, hypeCounts, me, hype] = await Promise.all([
-    getUpcomingGigs({ night, genre }),
+    getUpcomingGigs({ night, genre, viewerId: viewerId }),
     getChart(8),
     getHypeCounts(),
     getMyState(),
@@ -114,6 +116,14 @@ export default async function WhatsOn({
           Nothing listed yet.
         </div>
       )}
+
+      <Link
+        href="/submit"
+        className="border-line text-soft mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 font-bold"
+      >
+        <Icon name="plus" />
+        Add a gig
+      </Link>
     </>
   );
 }
