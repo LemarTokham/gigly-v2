@@ -37,7 +37,14 @@ socket under `$HOME` without anything being added to your shell profile.
 
 ### Environment
 
-`.env.local` points at the local stack and holds no secrets — those
+Two env files, read by two different programs:
+
+- **`.env.local`** — Next.js. Supabase URL and keys.
+- **`.env`** — the Supabase CLI. OAuth provider credentials referenced from
+  `config.toml` as `env(...)`, currently
+  `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `..._SECRET`.
+
+Both are gitignored. `.env.local` points at the local stack and holds no secrets — those
 credentials are the same on every local install. Hosted project keys live in
 `.env.production.local`, and go into Vercel at deploy time. Both are gitignored.
 
@@ -72,6 +79,21 @@ Error codes the UI branches on:
 | `GY002` | already hyping this artist, still inside the 7 day window |
 | `GY003` | artist has no upcoming live gig |
 | `GY004` | no hype to take back |
+
+## Auth
+
+Google OAuth and magic link. Sessions are cookie-based and refreshed in
+middleware, because a Server Component cannot set cookies — without that the
+refresh token rotates in memory, is never written back, and the user is quietly
+signed out an hour later.
+
+Magic links use a custom email template pointing at `/auth/confirm` with a
+token hash. Supabase's default link returns tokens in a URL fragment, which the
+server never receives, so a server-rendered app cannot establish a session
+from it.
+
+Session checks use `getUser()`, never `getSession()`. `getSession()` trusts the
+cookie as it stands; `getUser()` revalidates it against the auth server.
 
 ## Two things that are not the prototype
 

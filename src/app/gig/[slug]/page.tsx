@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
+import { GoingButton } from "@/components/going-button";
 import { clockTime, dayWord, money, nightOf, todayNight } from "@/lib/format";
-import { getGigBySlug } from "@/lib/queries";
+import { getGigBySlug, getMyState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function generateMetadata({
 
 export default async function GigPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const gig = await getGigBySlug(slug);
+  const [gig, me] = await Promise.all([getGigBySlug(slug), getMyState()]);
   if (!gig) notFound();
 
   const head = gig.lineup[0]?.artist;
@@ -64,13 +65,13 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
         </Link>
 
         <div className="mt-3.5 flex items-stretch gap-2">
-          <button
-            disabled
-            className="border-line text-ink inline-flex flex-1 items-center justify-center gap-[7px] rounded-xl border-2 px-4 py-3 text-base font-bold opacity-40"
-          >
-            <Icon name="plus" />
-            I&rsquo;m going
-          </button>
+          <GoingButton
+            gigId={gig.id}
+            going={me.going.has(gig.id)}
+            signedIn={!!me.userId}
+            path={`/gig/${gig.slug}`}
+            variant="wide"
+          />
           {gig.ticket_url ? (
             <a
               href={gig.ticket_url}

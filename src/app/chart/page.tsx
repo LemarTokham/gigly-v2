@@ -3,7 +3,7 @@ import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { dayWord, nightOf, todayNight } from "@/lib/format";
-import { getChart } from "@/lib/queries";
+import { getChart, getUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export const metadata = {
 };
 
 export default async function ChartPage() {
-  const chart = await getChart();
+  const [chart, user] = await Promise.all([getChart(), getUser()]);
   const today = todayNight();
   const [king, ...rest] = chart;
 
@@ -24,7 +24,7 @@ export default async function ChartPage() {
 
   return (
     <>
-      <TopBar />
+      <TopBar signedIn={!!user} />
 
       <div className="mt-2 mb-2.5 flex items-center justify-between">
         <h2 className="font-display text-xl leading-[1.1]">Backed this week</h2>

@@ -2,10 +2,15 @@ import Link from "next/link";
 import { Icon } from "@/components/icon";
 
 /**
- * Hype pips are shown spent-out until auth lands in step 3 and the real
- * allowance is readable.
+ * Hype pips show the full three until step 4 reads the real allowance.
  */
-export function TopBar({ hypesLeft = 3 }: { hypesLeft?: number }) {
+export function TopBar({
+  hypesLeft = 3,
+  signedIn = false,
+}: {
+  hypesLeft?: number;
+  signedIn?: boolean;
+}) {
   return (
     <header className="bg-bg sticky top-[env(safe-area-inset-top,0px)] z-30 flex items-center justify-between pt-3 pb-2.5">
       <h1 className="font-display flex items-baseline gap-2.5 text-[28px] leading-none">
@@ -24,18 +29,24 @@ export function TopBar({ hypesLeft = 3 }: { hypesLeft?: number }) {
         >
           <Icon name="search" />
         </Link>
-        <span
-          className="border-line bg-card flex items-center gap-0.5 rounded-full border px-2.5 py-[7px]"
-          aria-label={`${hypesLeft} of 3 hypes left`}
-        >
-          {[0, 1, 2].map((i) => (
-            <Icon
-              key={i}
-              name="flame"
-              className={i < hypesLeft ? "text-hype" : "text-line"}
-            />
-          ))}
-        </span>
+
+        {signedIn ? (
+          <span
+            className="border-line bg-card flex items-center gap-0.5 rounded-full border px-2.5 py-[7px]"
+            aria-label={`${hypesLeft} of 3 hypes left`}
+          >
+            {[0, 1, 2].map((i) => (
+              <Icon key={i} name="flame" className={i < hypesLeft ? "text-hype" : "text-line"} />
+            ))}
+          </span>
+        ) : (
+          <Link
+            href="/signin"
+            className="border-line bg-card rounded-full border px-3 py-2 text-sm font-bold"
+          >
+            Sign in
+          </Link>
+        )}
       </div>
     </header>
   );

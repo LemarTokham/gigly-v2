@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
+import { GoingButton } from "@/components/going-button";
 import { clockTime, dayWord, money, nightOf } from "@/lib/format";
 import type { GigRow } from "@/lib/queries";
 
@@ -8,10 +9,16 @@ export function GigCard({
   gig,
   today,
   hypeCounts,
+  going,
+  signedIn,
+  path,
 }: {
   gig: GigRow;
   today: string;
   hypeCounts: Map<string, number>;
+  going: boolean;
+  signedIn: boolean;
+  path: string;
 }) {
   const head = gig.lineup[0]?.artist;
   const support = gig.lineup.slice(1).map((l) => l.artist.name);
@@ -60,13 +67,7 @@ export function GigCard({
           <Icon name="flame" className="size-4" />
           {hypes}
         </span>
-        <span
-          aria-hidden="true"
-          title="Sign in from step 3 to save this"
-          className="border-line text-soft grid size-[42px] shrink-0 place-items-center rounded-full border-2 opacity-35"
-        >
-          <Icon name="plus" />
-        </span>
+        <GoingButton gigId={gig.id} going={going} signedIn={signedIn} path={path} />
       </div>
     </article>
   );

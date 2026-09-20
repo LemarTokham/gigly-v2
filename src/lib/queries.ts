@@ -297,3 +297,77 @@ export async function getHypeCounts(): Promise<Map<string, number>> {
   if (error) throw error;
   return new Map((data ?? []).map((r) => [r.id!, r.hype_count ?? 0]));
 }
+
+/** The signed-in user, or null. Revalidated against the auth server. */
+export async function getUser() {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  return user;
+}
+
+/** What the signed-in user follows and is going to, for rendering button state. */
+export async function getMyState(): Promise<{
+  userId: string | null;
+  following: Set<string>;
+  going: Set<string>;
+}> {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { userId: null, following: new Set(), going: new Set() };
+
+  // RLS limits both of these to the caller's own rows, so no user_id filter is
+  // needed — but it is written explicitly so the intent survives a policy change.
+  const [{ data: follows }, { data: attending }] = await Promise.all([
+    db.from("follows").select("artist_id").eq("user_id", user.id),
+    db.from("attending").select("gig_id").eq("user_id", user.id),
+  ]);
+
+  return {
+    userId: user.id,
+    following: new Set((follows ?? []).map((f) => f.artist_id)),
+    going: new Set((attending ?? []).map((a) => a.gig_id)),
+  };
+}
+
+/** Artists the signed-in user follows, with their next gig line. */
+export async function getMyFollowing() {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await db
+    .from("follows")
+    .select(`artist:artists!inner ( ${ARTIST_FIELDS} )`)
+    .eq("user_id", user.id);
+
+  return (data ?? []).map((r) => r.artist as unknown as SearchResults["artists"][number]);
+}
+
+/** Upcoming gigs the signed-in user has said they are going to. */
+export async function getMyGoing(): Promise<GigRow[]> {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return [];
+
+  const { data: rows } = await db.from("attending").select("gig_id").eq("user_id", user.id);
+  const ids = (rows ?? []).map((r) => r.gig_id);
+  if (!ids.length) return [];
+
+  const { data } = await db
+    .from("gigs")
+    .select(GIG_FIELDS)
+    .in("id", ids)
+    .eq("status", "live")
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  return (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
+}

@@ -6,7 +6,7 @@
  *   npm run db:start   (once)
  *   npm test
  */
-import { test, describe, before, after, beforeEach } from "node:test";
+import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -31,9 +31,13 @@ const admin = createClient(API_URL, SERVICE_KEY, {
 /** Error code from a failed rpc, e.g. "GY001". */
 const code = (e: unknown) => (e as { code?: string } | null)?.code;
 
+/** Per-file domain: the two test files must not delete each other's users. */
+const DOMAIN = "hype.gigly.test";
+
+const created: string[] = [];
 let userSeq = 0;
 async function newUser(): Promise<{ id: string; db: SupabaseClient }> {
-  const email = `test-${Date.now()}-${userSeq++}@gigly.test`;
+  const email = `test-${Date.now()}-${userSeq++}@${DOMAIN}`;
   const password = "hype-test-password";
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -49,6 +53,7 @@ async function newUser(): Promise<{ id: string; db: SupabaseClient }> {
   const signIn = await db.auth.signInWithPassword({ email, password });
   if (signIn.error) throw signIn.error;
 
+  created.push(data.user!.id);
   return { id: data.user!.id, db };
 }
 
@@ -146,15 +151,7 @@ after(async () => {
   for (const slug of ["test-pending-gig", "test-past-gig"]) {
     await admin.from("gigs").delete().eq("slug", slug);
   }
-  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  for (const u of data?.users ?? []) {
-    if (u.email?.endsWith("@gigly.test")) await admin.auth.admin.deleteUser(u.id);
-  }
-});
-
-beforeEach(async () => {
-  // seed hypes are added in a later step; for now start each test clean
-  await admin.from("hypes").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
+  for (const id of created) await admin.auth.admin.deleteUser(id);
 });
 
 // ------------------------------------------------------------- allowance
@@ -310,28 +307,35 @@ describe("scoring and the rolling seven day window", () => {
     const a = await newUser();
     const b = await newUser();
 
+    const beforeBig = await chartCount(artist["the-overheads"]);
+    const beforeSmall = await chartCount(artist["kirkdale-static"]);
+
     await a.db.rpc("cast_hype", { p_artist_id: artist["the-overheads"] });
     await b.db.rpc("cast_hype", { p_artist_id: artist["the-overheads"] });
     await a.db.rpc("cast_hype", { p_artist_id: artist["kirkdale-static"] });
 
-    assert.equal(await chartCount(artist["the-overheads"]), 2);
-    assert.equal(await chartCount(artist["kirkdale-static"]), 1);
+    assert.equal(await chartCount(artist["the-overheads"]), beforeBig + 2);
+    assert.equal(await chartCount(artist["kirkdale-static"]), beforeSmall + 1);
   });
 
   test("a hype stops counting after seven days", async () => {
     const { id, db } = await newUser();
+    const base = await chartCount(artist["dock-leaf"]);
+
     await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(await chartCount(artist["dock-leaf"]), 1);
+    assert.equal(await chartCount(artist["dock-leaf"]), base + 1);
 
     await backdate(id, artist["dock-leaf"], 8);
-    assert.equal(await chartCount(artist["dock-leaf"]), 0, "should have aged out");
+    assert.equal(await chartCount(artist["dock-leaf"]), base, "should have aged out");
   });
 
   test("a hype at six days still counts", async () => {
     const { id, db } = await newUser();
+    const base = await chartCount(artist["dock-leaf"]);
+
     await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
     await backdate(id, artist["dock-leaf"], 6);
-    assert.equal(await chartCount(artist["dock-leaf"]), 1);
+    assert.equal(await chartCount(artist["dock-leaf"]), base + 1);
   });
 
   test("the chart holds only artists with an upcoming live gig", async () => {

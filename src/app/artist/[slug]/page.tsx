@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
+import { FollowButton } from "@/components/follow-button";
 import {
   clockTime,
   dayNumber,
@@ -12,7 +13,7 @@ import {
   todayNight,
   weekdayShort,
 } from "@/lib/format";
-import { getArtistBySlug } from "@/lib/queries";
+import { getArtistBySlug, getMyState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function generateMetadata({
 
 export default async function ArtistPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const page = await getArtistBySlug(slug);
+  const [page, me] = await Promise.all([getArtistBySlug(slug), getMyState()]);
   if (!page) notFound();
 
   const { artist, gigs, followerCount, hypeCount, position } = page;
@@ -79,8 +80,8 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
           ))}
         </div>
 
-        {/* Hype and Follow arrive in steps 4 and 3. Shown disabled so the page
-            reads as the prototype does rather than hiding the mechanic. */}
+        {/* Hype arrives in step 4. Shown disabled so the page reads as the
+            prototype does rather than hiding the mechanic. */}
         <div className="mt-3.5 flex items-stretch gap-2">
           <button
             disabled
@@ -89,12 +90,12 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
             <Icon name="flame" />
             Hype
           </button>
-          <button
-            disabled
-            className="border-line text-ink inline-flex items-center justify-center rounded-xl border-2 px-4 py-3 text-base font-bold opacity-40"
-          >
-            Follow
-          </button>
+          <FollowButton
+            artistId={artist.id}
+            following={me.following.has(artist.id)}
+            signedIn={!!me.userId}
+            path={`/artist/${artist.slug}`}
+          />
           <span className="border-line grid w-[52px] shrink-0 place-items-center rounded-xl border-2 opacity-40">
             <Icon name="share" />
           </span>

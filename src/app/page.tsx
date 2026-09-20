@@ -8,6 +8,7 @@ import { dayWord, todayNight } from "@/lib/format";
 import {
   getChart,
   getHypeCounts,
+  getMyState,
   getUpcomingGigs,
   GENRE_GROUPS,
   type GenreGroup,
@@ -26,17 +27,23 @@ export default async function WhatsOn({
   const night = sp.night && /^\d{4}-\d{2}-\d{2}$/.test(sp.night) ? sp.night : null;
   const genre = GENRE_GROUPS.includes(sp.genre as GenreGroup) ? (sp.genre as GenreGroup) : null;
 
-  const [gigs, chart, hypeCounts] = await Promise.all([
+  const [gigs, chart, hypeCounts, me] = await Promise.all([
     getUpcomingGigs({ night, genre }),
     getChart(8),
     getHypeCounts(),
+    getMyState(),
   ]);
+
+  const path = night || genre ? `/?${new URLSearchParams({
+    ...(night ? { night } : {}),
+    ...(genre ? { genre } : {}),
+  })}` : "/";
 
   const heading = night ? dayWord(night, today) : "Coming up";
 
   return (
     <>
-      <TopBar />
+      <TopBar signedIn={!!me.userId} />
       <DayStrip today={today} night={night} genre={genre} />
       <GenreChips today={today} night={night} genre={genre} />
 
@@ -89,7 +96,15 @@ export default async function WhatsOn({
       {gigs.length > 0 ? (
         <div className="grid gap-4">
           {gigs.map((g) => (
-            <GigCard key={g.id} gig={g} today={today} hypeCounts={hypeCounts} />
+            <GigCard
+              key={g.id}
+              gig={g}
+              today={today}
+              hypeCounts={hypeCounts}
+              going={me.going.has(g.id)}
+              signedIn={!!me.userId}
+              path={path}
+            />
           ))}
         </div>
       ) : (

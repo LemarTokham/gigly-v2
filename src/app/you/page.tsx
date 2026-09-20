@@ -1,12 +1,41 @@
+import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
+import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
+import { signOut } from "@/lib/actions/auth";
+import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
+import { getMyFollowing, getMyGoing, getUser } from "@/lib/queries";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "You" };
 
-export default function YouPage() {
+export default async function YouPage() {
+  const user = await getUser();
+  const today = todayNight();
+
+  if (!user) {
+    return (
+      <>
+        <TopBar />
+        <div className="border-line text-soft mt-4 rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
+          <p>Sign in to back artists and keep track of what you&rsquo;re going to.</p>
+          <Link
+            href="/signin?next=%2Fyou"
+            className="bg-ink text-bg border-ink mt-3 inline-flex items-center justify-center rounded-xl border-2 px-4 py-2.5 text-sm font-bold"
+          >
+            Sign in
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  const [following, going] = await Promise.all([getMyFollowing(), getMyGoing()]);
+
   return (
     <>
-      <TopBar />
+      <TopBar signedIn />
+
       <div className="border-line bg-card mt-1.5 flex items-center gap-4 rounded-2xl border p-4">
         <span className="flex gap-1" role="img" aria-label="3 of 3 hypes left">
           {[0, 1, 2].map((i) => (
@@ -19,9 +48,60 @@ export default function YouPage() {
         </span>
       </div>
 
-      <div className="border-line text-soft mt-4 rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
-        Signing in arrives in step 3. Following, going and hyping land with it.
+      <div className="mt-[22px] mb-2.5 flex items-center justify-between">
+        <h2 className="font-display text-xl leading-[1.1]">Going</h2>
       </div>
+      {going.length > 0 ? (
+        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {going.map((g) => (
+            <Link key={g.id} href={`/gig/${g.slug}`} className="w-[168px] shrink-0">
+              <span className="relative block aspect-[16/10] overflow-hidden rounded-xl">
+                <ArtistImage artist={g.lineup[0].artist} />
+              </span>
+              <b className="mt-[7px] block text-[15px] leading-tight font-bold">
+                {g.lineup[0].artist.name}
+              </b>
+              <i className="text-soft block text-[13px] not-italic">
+                {dayWord(nightOf(g.starts_at), today)} {clockTime(g.starts_at)}, {g.venue.name}
+              </i>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="border-line text-soft rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
+          Tap + on a gig to save it here.
+        </div>
+      )}
+
+      <div className="mt-[22px] mb-2.5 flex items-center justify-between">
+        <h2 className="font-display text-xl leading-[1.1]">Following</h2>
+      </div>
+      {following.length > 0 ? (
+        <div className="-mx-4 flex gap-3.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {following.map((a) => (
+            <Link key={a.id} href={`/artist/${a.slug}`} className="w-[84px] shrink-0 text-center">
+              <span className="border-line inline-block rounded-full border-[3px] p-[3px]">
+                <span className="relative block size-[72px] overflow-hidden rounded-full">
+                  <ArtistImage artist={a} />
+                </span>
+              </span>
+              <em className="mt-1.5 line-clamp-2 block text-xs leading-tight font-semibold not-italic">
+                {a.name}
+              </em>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="border-line text-soft rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
+          Follow an artist and you hear first when they announce a gig.
+        </div>
+      )}
+
+      <form action={signOut} className="mt-6">
+        <button type="submit" className="text-soft text-sm font-bold underline">
+          Sign out
+        </button>
+      </form>
     </>
   );
 }
