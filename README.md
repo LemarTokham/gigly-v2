@@ -32,6 +32,8 @@ nothing to your hosted project.
 | `npm run seed:hypes` | synthetic users + hypes so the chart has data |
 | `npm run make:admin -- you@example.com` | grant the approval queue |
 | `npm run venues:locate -- --write` | refresh venue coordinates and place ids |
+| `npm run import -- --write` | run every registered import source |
+| `npm run dev:lan` | serve on the LAN address so a phone can use it |
 | `npm test` | hype rules, social, submission, dates |
 
 `scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
@@ -145,6 +147,31 @@ map. `npm run venues:locate` refreshes them. Two of the eight venues are
 street-level rather than exact, because OpenStreetMap has no entry for the room
 itself — the script reports which, and rejects any match more than 8km from the
 city centre, since "Quarry" otherwise matches a road in Woolton.
+
+## Importing gigs
+
+`scripts/import/` holds the plumbing: a source returns plain objects, the
+runner validates them and calls `import_gig()`, and everything lands as
+**pending**. An importer is not more trusted than a person — a broken feed
+fills the approval queue, not the chart.
+
+Re-running updates rather than duplicating, keyed on `(source, source_ref)`.
+A gig already here from another source or from a human submission is
+recognised as a duplicate when it matches venue, headliner and a start time
+within 90 minutes.
+
+`scripts/import/sources/index.mjs` is empty on purpose. Of the eight venues,
+only Future Yard and Quarry have sites that robots.txt permits and that are
+not behind Cloudflare, and neither publishes `schema.org/Event` data — so a
+per-venue scraper would be bespoke HTML parsing that breaks silently. A feed
+like Skiddle covers more rooms with less to go wrong, and plugs in as one
+adapter.
+
+`scripts/import/polite.mjs` identifies as GiglyBot with a contact URL, obeys
+robots.txt for **that** name, and waits a second between requests to a host.
+robots.txt is per-user-agent: a site blocking thirty AI crawlers by name has
+said nothing about an app importing gig listings, and the parser reads the
+rules that actually apply.
 
 ## Two things that are not the prototype
 

@@ -255,8 +255,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          imported_at: string | null
           price_pence: number
           slug: string
+          source: string
+          source_ref: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null
@@ -267,8 +270,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          imported_at?: string | null
           price_pence?: number
           slug: string
+          source?: string
+          source_ref?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
@@ -279,8 +285,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          imported_at?: string | null
           price_pence?: number
           slug?: string
+          source?: string
+          source_ref?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
@@ -475,6 +484,23 @@ export type Database = {
       gig_is_visible: { Args: { p_gig_id: string }; Returns: boolean }
       hype_week_start: { Args: { p_at?: string }; Returns: string }
       hypes_remaining: { Args: never; Returns: number }
+      import_gig: {
+        Args: {
+          p_artist_name: string
+          p_price_pence?: number
+          p_source: string
+          p_source_ref: string
+          p_starts_at: string
+          p_support?: string[]
+          p_ticket_url?: string
+          p_venue_slug: string
+        }
+        Returns: {
+          gig_id: string
+          gig_slug: string
+          outcome: Database["public"]["Enums"]["import_outcome"]
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       slugify: { Args: { p_text: string }; Returns: string }
       submit_gig: {
@@ -489,8 +515,11 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          imported_at: string | null
           price_pence: number
           slug: string
+          source: string
+          source_ref: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null
@@ -519,6 +548,7 @@ export type Database = {
         | "Soul"
         | "Hip hop"
       gig_status: "pending" | "live" | "rejected"
+      import_outcome: "created" | "updated" | "duplicate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -659,6 +689,7 @@ export const Constants = {
         "Hip hop",
       ],
       gig_status: ["pending", "live", "rejected"],
+      import_outcome: ["created", "updated", "duplicate"],
     },
   },
 } as const

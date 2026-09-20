@@ -21,6 +21,7 @@ export default async function AdminPage() {
     .from("gigs")
     .select(`
       id, slug, starts_at, price_pence, ticket_url, status, submitted_by, submitted_as,
+      source, source_ref, imported_at,
       venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
       lineup:gig_artists ( position, artist:artists!inner (
         id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band
@@ -29,7 +30,11 @@ export default async function AdminPage() {
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
-  const pending = (data ?? []) as unknown as (GigRow & { submitted_as: string | null })[];
+  const pending = (data ?? []) as unknown as (GigRow & {
+    submitted_as: string | null;
+    source: string;
+    source_ref: string | null;
+  })[];
   const today = todayNight();
 
   return (
@@ -72,15 +77,26 @@ export default async function AdminPage() {
                     {gig.venue.name}, {gig.venue.area} · {money(gig.price_pence)}
                   </p>
                   <p className="mt-1.5 flex items-center gap-2 text-sm font-semibold">
-                    <Icon name="user" className="text-soft size-4" />
-                    Submitted as{" "}
-                    {gig.submitted_as === "artist"
-                      ? "the artist"
-                      : gig.submitted_as === "venue"
-                        ? "the venue or promoter"
-                        : gig.submitted_as === "fan"
-                          ? "a fan"
-                          : "unspecified"}
+                    <Icon name={gig.source === "submission" ? "user" : "bars"} className="text-soft size-4" />
+                    {gig.source === "submission" ? (
+                      <>
+                        Submitted as{" "}
+                        {gig.submitted_as === "artist"
+                          ? "the artist"
+                          : gig.submitted_as === "venue"
+                            ? "the venue or promoter"
+                            : gig.submitted_as === "fan"
+                              ? "a fan"
+                              : "unspecified"}
+                      </>
+                    ) : (
+                      <>
+                        Imported from {gig.source}
+                        <span className="bg-raise text-soft rounded-full px-2 py-0.5 text-[11px] font-bold">
+                          not a person
+                        </span>
+                      </>
+                    )}
                   </p>
                   {gig.ticket_url ? (
                     <a
