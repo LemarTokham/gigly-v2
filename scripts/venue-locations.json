@@ -1,0 +1,42 @@
+{
+  "24-kitchen-street": {
+    "lat": 53.3973818,
+    "lng": -2.9819296,
+    "place_id": "ChIJGTgI7Sche0gRJ4hJtvX_wKg"
+  },
+  "ebgbs": {
+    "lat": 53.4015947,
+    "lng": -2.9785309,
+    "place_id": "ChIJ6dEiJiQhe0gRISx3sp0zlT8"
+  },
+  "future-yard": {
+    "lat": 53.3911979,
+    "lng": -3.0184714,
+    "place_id": "ChIJd8JYLgcne0gRpegwtbxwKkY"
+  },
+  "kazimier-stockroom": {
+    "lat": 53.4023835,
+    "lng": -2.9822026,
+    "place_id": "ChIJMTd0xSUhe0gR1G77FFSwi-c"
+  },
+  "quarry": {
+    "lat": 53.4017473,
+    "lng": -2.9724365,
+    "place_id": "ChIJMQZDnTMhe0gRAX9CqciZ1Q0"
+  },
+  "the-caledonia": {
+    "lat": 53.4007666,
+    "lng": -2.9700995,
+    "place_id": "ChIJbW2TGh8he0gR86tAwqjF5iQ"
+  },
+  "the-jacaranda": {
+    "lat": 53.4024301,
+    "lng": -2.9795756,
+    "place_id": "ChIJD1yBJiQhe0gRCJaNbWKrTh4"
+  },
+  "the-shipping-forecast": {
+    "lat": 53.4025238,
+    "lng": -2.9793737,
+    "place_id": "ChIJYUK5IiQhe0gRge5OezzWqgU"
+  }
+}

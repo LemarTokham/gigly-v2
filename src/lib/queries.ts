@@ -213,6 +213,8 @@ export type VenueWithCount = Database["public"]["Tables"]["venues"]["Row"] & {
   gig_count: number;
   tonight: boolean;
   next_gig: GigRow | null;
+  /** Upcoming gigs at this venue, soonest first — shown in the map panel. */
+  gigs: GigRow[];
 };
 
 /** Venues with how many live gigs fall in the window, for the map. */
@@ -244,6 +246,7 @@ export async function getVenuesForMap(range: "tonight" | "week"): Promise<VenueW
         return t >= tonightStart && t < tonightEnd;
       }),
       next_gig: mine[0] ?? null,
+      gigs: mine.slice(0, 4),
     };
   });
 }

@@ -31,6 +31,7 @@ nothing to your hosted project.
 | `npm run db:push` | apply migrations to the hosted project |
 | `npm run seed:hypes` | synthetic users + hypes so the chart has data |
 | `npm run make:admin -- you@example.com` | grant the approval queue |
+| `npm run venues:locate -- --write` | refresh venue coordinates and place ids |
 | `npm test` | hype rules, social, submission, dates |
 
 `scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
@@ -44,6 +45,12 @@ Two env files, read by two different programs:
 - **`.env`** — the Supabase CLI. OAuth provider credentials referenced from
   `config.toml` as `env(...)`, currently
   `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `..._SECRET`.
+
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` goes in `.env.local`. It reaches the browser
+by design — the Maps JavaScript API runs client-side — so an HTTP referrer
+restriction on the key is the actual protection, not secrecy.
+`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` is optional and falls back to Google's demo
+id; create your own before deploying.
 
 Both are gitignored. `.env.local` points at the local stack and holds no secrets — those
 credentials are the same on every local install. Hosted project keys live in
@@ -118,6 +125,26 @@ a live gig, so nothing in the queue can move the chart.
 
 `/admin` 404s rather than 403s for non-admins: a page that announces itself
 tells everyone it is there.
+
+## The map
+
+A real Google Map rather than the prototype's hand-drawn SVG. Pins keep the
+prototype's language: gig count inside, gold ring for something on tonight,
+muted when a venue has nothing coming up.
+
+Venue coordinates come from OpenStreetMap, not Google. Google's terms let you
+store a `place_id` indefinitely but not the content behind it — coordinates,
+ratings and reviews must not be cached beyond 30 days. So coordinates come
+from a source whose licence permits keeping them, the `place_id` is stored, and
+ratings and reviews are fetched in the browser when a venue is opened and never
+written to our database. The map therefore draws from our own rows with no
+Places call on page load; a request is only spent when someone opens a venue.
+
+Coordinates are baked into `supabase/seed.sql` so `db:reset` restores a working
+map. `npm run venues:locate` refreshes them. Two of the eight venues are
+street-level rather than exact, because OpenStreetMap has no entry for the room
+itself — the script reports which, and rejects any match more than 8km from the
+city centre, since "Quarry" otherwise matches a road in Woolton.
 
 ## Two things that are not the prototype
 

@@ -378,6 +378,7 @@ export type Database = {
           area: string
           capacity: number | null
           created_at: string
+          google_place_id: string | null
           id: string
           lat: number | null
           lng: number | null
@@ -390,6 +391,7 @@ export type Database = {
           area: string
           capacity?: number | null
           created_at?: string
+          google_place_id?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -402,6 +404,7 @@ export type Database = {
           area?: string
           capacity?: number | null
           created_at?: string
+          google_place_id?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
