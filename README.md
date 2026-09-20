@@ -32,7 +32,9 @@ nothing to your hosted project.
 | `npm run seed:hypes` | synthetic users + hypes so the chart has data |
 | `npm run make:admin -- you@example.com` | grant the approval queue |
 | `npm run venues:locate -- --write` | refresh venue coordinates and place ids |
+| `npm run venues:skiddle -- --write` | map venues to Skiddle venue ids |
 | `npm run import -- --write` | run every registered import source |
+| `npm run db:clear-demo` | drop the invented sample data locally |
 | `npm run dev:lan` | serve on the LAN address so a phone can use it |
 | `npm test` | hype rules, social, submission, dates |
 
@@ -160,12 +162,29 @@ A gig already here from another source or from a human submission is
 recognised as a duplicate when it matches venue, headliner and a start time
 within 90 minutes.
 
-`scripts/import/sources/index.mjs` is empty on purpose. Of the eight venues,
-only Future Yard and Quarry have sites that robots.txt permits and that are
-not behind Cloudflare, and neither publishes `schema.org/Event` data — so a
-per-venue scraper would be bespoke HTML parsing that breaks silently. A feed
-like Skiddle covers more rooms with less to go wrong, and plugs in as one
-adapter.
+**Skiddle** is the first source. Looking at the eight venues directly showed
+why: only Future Yard and Quarry have sites robots.txt permits and that are
+not behind Cloudflare, neither publishes `schema.org/Event` data, The
+Jacaranda's own listings are Skiddle-powered anyway, Quarry's come from DICE,
+and four venues have no website at all. One feed beats eight scrapers.
+
+Skiddle's API is documented as **non-commercial use only**. Fine for a project;
+anything that takes money needs an agreement with them.
+
+`SKIDDLE_API_KEY` goes in `.env.local` with no `NEXT_PUBLIC_` prefix — unlike
+the Maps key it is a real secret and only ever runs in the import script.
+
+Run `npm run venues:skiddle -- --write` once to map venues to Skiddle ids,
+then `npm run import -- --write`. Venue matches are verified by name, because
+a near-miss would quietly attach another room's listings to ours.
+
+### Sample data
+
+The seed is invented, and `npm run db:reset` is what loads it. It never
+reaches the hosted project — `db push` applies migrations only — and the test
+suite depends on it, so it stays. Seeded gigs carry `source = 'seed'`, and
+`npm run db:clear-demo` removes them locally when you want to look at real
+listings without "Dock Leaf" next to them.
 
 `scripts/import/polite.mjs` identifies as GiglyBot with a contact URL, obeys
 robots.txt for **that** name, and waits a second between requests to a host.

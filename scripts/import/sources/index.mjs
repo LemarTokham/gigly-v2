@@ -23,8 +23,9 @@
  * Everything a source returns lands as pending, so a broken adapter shows up
  * in the approval queue rather than on the chart.
  *
- * Nothing registered yet: of the eight venues, two have sites that are
- * realistically scrapeable and neither publishes structured event data, so a
- * feed like Skiddle is the first adapter worth writing.
+ * Skiddle covers most Liverpool rooms and is where The Jacaranda's own
+ * listings come from. Their API is documented as non-commercial use only.
  */
-export const SOURCES = [];
+import skiddle from "./skiddle.mjs";
+
+export const SOURCES = [skiddle];

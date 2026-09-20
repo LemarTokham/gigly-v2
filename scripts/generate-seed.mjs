@@ -112,8 +112,8 @@ ${gigs}
     v_slug := r.lineup[1] || '-at-' || r.venue_slug || '-'
               || to_char(v_starts at time zone 'Europe/London', 'YYYY-MM-DD');
 
-    insert into public.gigs (slug, venue_id, starts_at, price_pence, status)
-    select v_slug, v.id, v_starts, r.price_pence, 'live'
+    insert into public.gigs (slug, venue_id, starts_at, price_pence, status, source)
+    select v_slug, v.id, v_starts, r.price_pence, 'live', 'seed'
     from public.venues v
     where v.slug = r.venue_slug
     returning id into v_gig_id;

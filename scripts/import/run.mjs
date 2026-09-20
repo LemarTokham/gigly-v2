@@ -36,7 +36,9 @@ if (sources.length === 0) {
   process.exit(0);
 }
 
-const { data: venues, error: venueErr } = await db.from("venues").select("id, slug, name");
+const { data: venues, error: venueErr } = await db
+  .from("venues")
+  .select("id, slug, name, skiddle_id");
 if (venueErr) throw venueErr;
 const known = new Set(venues.map((v) => v.slug));
 

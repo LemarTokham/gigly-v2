@@ -18,7 +18,9 @@
     "make:admin": "node --env-file=.env.local scripts/make-admin.mjs",
     "venues:locate": "node --env-file=.env.local scripts/locate-venues.mjs",
     "dev:lan": "node scripts/use-lan.mjs && next dev -H 0.0.0.0",
-    "import": "node --env-file=.env.local scripts/import/run.mjs"
+    "import": "node --env-file=.env.local scripts/import/run.mjs",
+    "db:clear-demo": "node --env-file=.env.local scripts/clear-demo.mjs",
+    "venues:skiddle": "node --env-file=.env.local scripts/venues-skiddle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

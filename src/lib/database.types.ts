@@ -394,6 +394,7 @@ export type Database = {
           map_x: number | null
           map_y: number | null
           name: string
+          skiddle_id: number | null
           slug: string
         }
         Insert: {
@@ -407,6 +408,7 @@ export type Database = {
           map_x?: number | null
           map_y?: number | null
           name: string
+          skiddle_id?: number | null
           slug: string
         }
         Update: {
@@ -420,6 +422,7 @@ export type Database = {
           map_x?: number | null
           map_y?: number | null
           name?: string
+          skiddle_id?: number | null
           slug?: string
         }
         Relationships: []
