@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { FollowButton } from "@/components/follow-button";
+import { HypeButton } from "@/components/hype-button";
 import {
   clockTime,
   dayNumber,
@@ -13,7 +14,7 @@ import {
   todayNight,
   weekdayShort,
 } from "@/lib/format";
-import { getArtistBySlug, getMyState } from "@/lib/queries";
+import { getArtistBySlug, getHypeState, getMyState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,11 @@ export async function generateMetadata({
 
 export default async function ArtistPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [page, me] = await Promise.all([getArtistBySlug(slug), getMyState()]);
+  const [page, me, hype] = await Promise.all([
+    getArtistBySlug(slug),
+    getMyState(),
+    getHypeState(),
+  ]);
   if (!page) notFound();
 
   const { artist, gigs, followerCount, hypeCount, position } = page;
@@ -80,16 +85,17 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
           ))}
         </div>
 
-        {/* Hype arrives in step 4. Shown disabled so the page reads as the
-            prototype does rather than hiding the mechanic. */}
         <div className="mt-3.5 flex items-stretch gap-2">
-          <button
-            disabled
-            className="bg-hype border-hype text-on-hype inline-flex flex-1 items-center justify-center gap-[7px] rounded-xl border-2 px-4 py-3 text-base font-bold opacity-40"
-          >
-            <Icon name="flame" />
-            Hype
-          </button>
+          <HypeButton
+            artistId={artist.id}
+            artistName={artist.name}
+            hyped={hype.hyped.has(artist.id)}
+            hypeable={gigs.length > 0}
+            hypesLeft={hype.left}
+            signedIn={!!hype.userId}
+            path={`/artist/${artist.slug}`}
+            variant="wide"
+          />
           <FollowButton
             artistId={artist.id}
             following={me.following.has(artist.id)}

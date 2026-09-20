@@ -71,6 +71,13 @@ is a per-row boolean with no serialisation, so two concurrent inserts both see
 "2 of 3 used" and both succeed. The functions take a transaction-scoped
 advisory lock keyed on the user.
 
+The up and down arrows are derived from the hypes table, not a daily snapshot:
+yesterday's chart is the same query with the window shifted back 24 hours. That
+avoids a cron job and a snapshot table. The tradeoff is that a hype cast and
+then taken back leaves no trace, so yesterday's position can be slightly off.
+Fine for an arrow; if the figure ever needs to be exact it wants a real
+`artist_rank_snapshots` table written daily.
+
 Error codes the UI branches on:
 
 | code | meaning |

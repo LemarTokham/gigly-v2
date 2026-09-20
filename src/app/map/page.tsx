@@ -3,7 +3,7 @@ import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
-import { getUser, getVenuesForMap } from "@/lib/queries";
+import { getHypeState, getVenuesForMap } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function MapPage({
 }) {
   const sp = await searchParams;
   const range = sp.range === "tonight" ? "tonight" : "week";
-  const [venues, user] = await Promise.all([getVenuesForMap(range), getUser()]);
+  const [venues, hype] = await Promise.all([getVenuesForMap(range), getHypeState()]);
   const today = todayNight();
 
   const busiest = [...venues].sort((a, b) => b.gig_count - a.gig_count)[0];
@@ -22,7 +22,7 @@ export default async function MapPage({
 
   return (
     <>
-      <TopBar signedIn={!!user} />
+      <TopBar signedIn={!!hype.userId} hypesLeft={hype.left} />
 
       <div role="group" aria-label="When" className="mt-1 mb-3 flex gap-1.5">
         {(["tonight", "week"] as const).map((r) => (

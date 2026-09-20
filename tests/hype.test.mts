@@ -129,6 +129,28 @@ before(async () => {
     .single();
   artist["test-past"] = past.data!.id;
 
+  // chart-eligible and starts with no hypes at all, for the movement tests
+  const fresh = await admin
+    .from("artists")
+    .insert({ name: "Test Fresh", slug: "test-fresh", genre: "Test", genre_group: "Indie" })
+    .select("id")
+    .single();
+  artist["test-fresh"] = fresh.data!.id;
+
+  const freshGig = await admin
+    .from("gigs")
+    .insert({
+      slug: "test-fresh-gig",
+      venue_id: fixtureVenue,
+      starts_at: new Date(Date.now() + 6 * 864e5).toISOString(),
+      status: "live",
+    })
+    .select("id")
+    .single();
+  await admin
+    .from("gig_artists")
+    .insert({ gig_id: freshGig.data!.id, artist_id: artist["test-fresh"], position: 0 });
+
   const pastGig = await admin
     .from("gigs")
     .insert({
@@ -145,10 +167,10 @@ before(async () => {
 });
 
 after(async () => {
-  for (const slug of ["test-no-gig", "test-pending", "test-past"]) {
+  for (const slug of ["test-no-gig", "test-pending", "test-past", "test-fresh"]) {
     await admin.from("artists").delete().eq("slug", slug);
   }
-  for (const slug of ["test-pending-gig", "test-past-gig"]) {
+  for (const slug of ["test-pending-gig", "test-past-gig", "test-fresh-gig"]) {
     await admin.from("gigs").delete().eq("slug", slug);
   }
   for (const id of created) await admin.auth.admin.deleteUser(id);
@@ -437,5 +459,88 @@ describe("the table cannot be written around the functions", () => {
       .select("*", { count: "exact", head: true })
       .eq("user_id", victim.id);
     assert.equal(count, 1);
+  });
+});
+
+// ------------------------------------------------------- chart movement
+
+describe("the up and down arrows", () => {
+  async function chartRow(artistId: string) {
+    const { data } = await admin
+      .from("artist_chart")
+      .select("hype_count, position, position_yesterday, is_new")
+      .eq("id", artistId)
+      .maybeSingle();
+    return data;
+  }
+
+  test("the live count is 7 days even though the view scans 8", async () => {
+    // The view reaches back 8 days so yesterday's ranking can come off the same
+    // scan. If the live count is not filtered back to 7 it silently becomes an
+    // 8 day count, which nothing else would catch.
+    const { id, db } = await newUser();
+    const before = (await chartRow(artist["dock-leaf"]))!.hype_count;
+
+    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
+    await backdate(id, artist["dock-leaf"], 7.5);
+
+    const after = (await chartRow(artist["dock-leaf"]))!;
+    assert.equal(after.hype_count, before, "a 7.5 day old hype must not count now");
+
+    const { count } = await admin
+      .from("hypes")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", id);
+    assert.equal(count, 1, "the row is still there, it just stopped counting");
+  });
+
+  test("an artist with no earlier hypes is marked new", async () => {
+    const row = await chartRow(artist["test-fresh"]);
+    assert.equal(row?.hype_count, 0);
+    assert.equal(row?.is_new, true);
+  });
+
+  test("a hype cast today does not make an artist look established", async () => {
+    const { db } = await newUser();
+    await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
+
+    const row = await chartRow(artist["test-fresh"]);
+    assert.equal(row?.hype_count, 1);
+    assert.equal(row?.is_new, true, "yesterday's window is still empty");
+  });
+
+  test("once a hype is older than a day the artist is no longer new", async () => {
+    const { id, db } = await newUser();
+    await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
+    await backdate(id, artist["test-fresh"], 3);
+
+    const row = await chartRow(artist["test-fresh"]);
+    assert.equal(row?.is_new, false);
+  });
+
+  test("gaining hypes moves an artist up relative to yesterday", async () => {
+    // Park three hypes on the fresh artist at 3 days old, so they sit in both
+    // windows, then add more that only count now.
+    for (let i = 0; i < 3; i++) {
+      const { id, db } = await newUser();
+      await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
+      await backdate(id, artist["test-fresh"], 3);
+    }
+    const settled = (await chartRow(artist["test-fresh"]))!;
+
+    for (let i = 0; i < 12; i++) {
+      const { db } = await newUser();
+      await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
+    }
+    const climbed = (await chartRow(artist["test-fresh"]))!;
+
+    assert.ok(
+      climbed.position! < settled.position!,
+      "more hypes should mean a better position",
+    );
+    assert.ok(
+      climbed.position! < climbed.position_yesterday!,
+      "and it should read as a climb against yesterday",
+    );
   });
 });

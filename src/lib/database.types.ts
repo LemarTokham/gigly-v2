@@ -421,6 +421,7 @@ export type Database = {
           genre_group: Database["public"]["Enums"]["genre_group"] | null
           hype_count: number | null
           id: string | null
+          is_new: boolean | null
           name: string | null
           next_gig_id: string | null
           next_gig_slug: string | null
@@ -429,6 +430,7 @@ export type Database = {
           next_venue_slug: string | null
           photo_url: string | null
           position: number | null
+          position_yesterday: number | null
           slug: string | null
         }
         Relationships: []

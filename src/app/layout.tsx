@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Bowlby_One } from "next/font/google";
 import "./globals.css";
 import { TabBar } from "@/components/tab-bar";
+import { Toaster } from "@/components/toaster";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({
         <div className="mx-auto max-w-[500px] px-4 pb-24">{children}</div>
         {sheet}
         <TabBar />
+        <Toaster />
       </body>
     </html>
   );

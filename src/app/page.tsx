@@ -8,6 +8,7 @@ import { dayWord, todayNight } from "@/lib/format";
 import {
   getChart,
   getHypeCounts,
+  getHypeState,
   getMyState,
   getUpcomingGigs,
   GENRE_GROUPS,
@@ -27,11 +28,12 @@ export default async function WhatsOn({
   const night = sp.night && /^\d{4}-\d{2}-\d{2}$/.test(sp.night) ? sp.night : null;
   const genre = GENRE_GROUPS.includes(sp.genre as GenreGroup) ? (sp.genre as GenreGroup) : null;
 
-  const [gigs, chart, hypeCounts, me] = await Promise.all([
+  const [gigs, chart, hypeCounts, me, hype] = await Promise.all([
     getUpcomingGigs({ night, genre }),
     getChart(8),
     getHypeCounts(),
     getMyState(),
+    getHypeState(),
   ]);
 
   const path = night || genre ? `/?${new URLSearchParams({
@@ -43,7 +45,7 @@ export default async function WhatsOn({
 
   return (
     <>
-      <TopBar signedIn={!!me.userId} />
+      <TopBar signedIn={!!me.userId} hypesLeft={hype.left} />
       <DayStrip today={today} night={night} genre={genre} />
       <GenreChips today={today} night={night} genre={genre} />
 

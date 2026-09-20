@@ -4,7 +4,7 @@ import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { signOut } from "@/lib/actions/auth";
 import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
-import { getMyFollowing, getMyGoing, getUser } from "@/lib/queries";
+import { getHypeState, getMyFollowing, getMyGoing, getMyHypes, getUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "You" };
@@ -30,23 +30,59 @@ export default async function YouPage() {
     );
   }
 
-  const [following, going] = await Promise.all([getMyFollowing(), getMyGoing()]);
+  const [following, going, backing, hype] = await Promise.all([
+    getMyFollowing(),
+    getMyGoing(),
+    getMyHypes(),
+    getHypeState(),
+  ]);
 
   return (
     <>
-      <TopBar signedIn />
+      <TopBar signedIn hypesLeft={hype.left} />
 
       <div className="border-line bg-card mt-1.5 flex items-center gap-4 rounded-2xl border p-4">
-        <span className="flex gap-1" role="img" aria-label="3 of 3 hypes left">
+        <span className="flex gap-1" role="img" aria-label={`${hype.left} of 3 hypes left`}>
           {[0, 1, 2].map((i) => (
-            <Icon key={i} name="flame" className="text-hype size-10" />
+            <Icon
+              key={i}
+              name="flame"
+              className={`size-10 ${i < hype.left ? "text-hype" : "text-line"}`}
+            />
           ))}
         </span>
         <span>
-          <b className="font-display block text-lg leading-[1.15] font-normal">3 hypes left</b>
+          <b className="font-display block text-lg leading-[1.15] font-normal">
+            {hype.left} {hype.left === 1 ? "hype" : "hypes"} left
+          </b>
           <span className="text-soft text-sm">Fresh ones every Monday</span>
         </span>
       </div>
+
+      {backing.length > 0 && (
+        <>
+          <div className="mt-[22px] mb-2.5">
+            <h2 className="font-display text-xl leading-[1.1]">Backing now</h2>
+          </div>
+          {backing.map((b) => (
+            <div key={b.artist.id} className="border-line flex items-center gap-3 border-b py-2">
+              <Link
+                href={`/artist/${b.artist.slug}`}
+                aria-label={b.artist.name}
+                className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl"
+              >
+                <ArtistImage artist={b.artist} />
+              </Link>
+              <Link href={`/artist/${b.artist.slug}`} className="min-w-0 flex-1">
+                <b className="block text-base leading-tight font-bold">{b.artist.name}</b>
+                <i className="text-soft block text-[13px] not-italic">
+                  Counts for {b.daysLeft} more {b.daysLeft === 1 ? "day" : "days"}
+                </i>
+              </Link>
+            </div>
+          ))}
+        </>
+      )}
 
       <div className="mt-[22px] mb-2.5 flex items-center justify-between">
         <h2 className="font-display text-xl leading-[1.1]">Going</h2>

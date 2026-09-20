@@ -2,8 +2,9 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
+import { HypeButton } from "@/components/hype-button";
 import { dayWord, nightOf, todayNight } from "@/lib/format";
-import { getChart, getUser } from "@/lib/queries";
+import { getChart, getHypeState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +13,23 @@ export const metadata = {
   description: "Who Liverpool is backing this week.",
 };
 
+/** ▲2 / ▼1 / – / new, as the prototype shows it. */
+function Movement({ position, yesterday, isNew }: { position: number; yesterday: number; isNew: boolean }) {
+  if (isNew) return <i className="text-soft mt-[3px] block text-[11px] font-bold not-italic">new</i>;
+  const moved = yesterday - position;
+  if (moved === 0) return <i className="text-soft mt-[3px] block text-[11px] font-bold not-italic">–</i>;
+  return (
+    <i
+      className={`mt-[3px] block text-[11px] font-bold not-italic ${moved > 0 ? "text-go" : "text-down"}`}
+      aria-label={moved > 0 ? `up ${moved}` : `down ${-moved}`}
+    >
+      {moved > 0 ? `▲${moved}` : `▼${-moved}`}
+    </i>
+  );
+}
+
 export default async function ChartPage() {
-  const [chart, user] = await Promise.all([getChart(), getUser()]);
+  const [chart, me] = await Promise.all([getChart(), getHypeState()]);
   const today = todayNight();
   const [king, ...rest] = chart;
 
@@ -22,27 +38,55 @@ export default async function ChartPage() {
       ? `${dayWord(nightOf(a.next_gig_starts_at), today)} at ${a.next_venue_name}`
       : "No gigs listed";
 
+  const hypeProps = (a: (typeof chart)[number]) => ({
+    artistId: a.id!,
+    artistName: a.name!,
+    hyped: me.hyped.has(a.id!),
+    hypeable: true as const,
+    hypesLeft: me.left,
+    signedIn: !!me.userId,
+    path: "/chart",
+  });
+
   return (
     <>
-      <TopBar signedIn={!!user} />
+      <TopBar signedIn={!!me.userId} hypesLeft={me.left} />
 
       <div className="mt-2 mb-2.5 flex items-center justify-between">
         <h2 className="font-display text-xl leading-[1.1]">Backed this week</h2>
-        <Icon name="info" className="text-soft" />
+        <Link href="/hype" aria-label="How hype works" className="text-soft">
+          <Icon name="info" />
+        </Link>
       </div>
 
-      {/* The hype buttons and the rank movement arrows arrive in step 4. */}
+      {me.userId &&
+        (me.left > 0 ? (
+          <Link href="/" className="bg-ink text-bg flex w-full items-center gap-3 rounded-2xl px-3.5 py-3">
+            <span>
+              <b className="block text-base leading-tight font-bold">
+                {me.left} {me.left === 1 ? "hype" : "hypes"} left
+              </b>
+              <i className="block text-[13px] not-italic opacity-75">Find someone new</i>
+            </span>
+            <Icon name="go" className="ml-auto" />
+          </Link>
+        ) : (
+          <div className="border-line bg-card text-soft flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3">
+            <span>
+              <b className="block text-base leading-tight font-bold">All three spent</b>
+              <i className="block text-[13px] not-italic">Fresh hypes on Monday</i>
+            </span>
+          </div>
+        ))}
+
       {!king ? (
-        <div className="border-line text-soft rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
+        <div className="border-line text-soft mt-4 rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
           No gigs listed, so nobody to back yet.
         </div>
       ) : (
         <>
           <div className="border-line bg-card relative mt-4 overflow-hidden rounded-2xl border">
-            <Link
-              href={`/artist/${king.slug}`}
-              className="relative block aspect-video w-full text-white"
-            >
+            <Link href={`/artist/${king.slug}`} className="relative block aspect-video w-full text-white">
               <ArtistImage
                 artist={{
                   slug: king.slug!,
@@ -57,26 +101,29 @@ export default async function ChartPage() {
               <span className="font-display absolute top-2.5 left-2.5 z-10 rounded-2xl bg-[rgba(10,6,20,0.8)] px-3.5 pt-1 pb-2 text-[40px] leading-none">
                 1
               </span>
+              {me.hyped.has(king.id!) && (
+                <span
+                  aria-hidden="true"
+                  className="font-display border-hype text-hype absolute top-12 right-3 z-20 -rotate-12 rounded-md border-[3px] bg-white/95 px-2.5 pt-1.5 pb-1 text-base leading-none"
+                >
+                  Hyped
+                </span>
+              )}
               <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
-                <b className="font-display block text-[clamp(24px,7.4vw,30px)] leading-[1.04]">
-                  {king.name}
-                </b>
-                <i className="mt-[3px] block text-sm font-semibold not-italic opacity-90">
-                  {nextLine(king)}
-                </i>
+                <b className="font-display block text-[clamp(24px,7.4vw,30px)] leading-[1.04]">{king.name}</b>
+                <i className="mt-[3px] block text-sm font-semibold not-italic opacity-90">{nextLine(king)}</i>
               </span>
             </Link>
             <div className="flex items-center gap-2.5 py-2.5 pr-3 pl-3.5">
               <span className="min-w-0 flex-1 text-[15px] leading-tight font-bold">
                 {king.genre}
-                <i className="text-soft block text-[13px] font-normal not-italic">
-                  {king.from_area}
-                </i>
+                <i className="text-soft block text-[13px] font-normal not-italic">{king.from_area}</i>
               </span>
               <span className="text-hype inline-flex items-center gap-[3px] text-sm font-bold">
                 <Icon name="flame" className="size-4" />
                 {king.hype_count}
               </span>
+              <HypeButton {...hypeProps(king)} />
             </div>
           </div>
 
@@ -84,10 +131,15 @@ export default async function ChartPage() {
             {rest.map((a) => (
               <li
                 key={a.id}
-                className="border-line grid grid-cols-[30px_54px_1fr_auto] items-center gap-2.5 border-b py-2.5"
+                className="border-line grid grid-cols-[30px_54px_1fr_auto_auto] items-center gap-2.5 border-b py-2.5"
               >
                 <span className="font-display text-center text-[18px] leading-none">
                   {a.position}
+                  <Movement
+                    position={a.position!}
+                    yesterday={a.position_yesterday!}
+                    isNew={!!a.is_new}
+                  />
                 </span>
                 <Link
                   href={`/artist/${a.slug}`}
@@ -106,15 +158,14 @@ export default async function ChartPage() {
                   />
                 </Link>
                 <Link href={`/artist/${a.slug}`} className="min-w-0">
-                  <b className="block text-base leading-tight font-bold [overflow-wrap:anywhere]">
-                    {a.name}
-                  </b>
+                  <b className="block text-base leading-tight font-bold [overflow-wrap:anywhere]">{a.name}</b>
                   <i className="text-soft block text-[13px] not-italic">{nextLine(a)}</i>
                 </Link>
                 <span className="text-hype inline-flex items-center gap-[3px] text-sm font-bold">
                   <Icon name="flame" className="size-4" />
                   {a.hype_count}
                 </span>
+                <HypeButton {...hypeProps(a)} />
               </li>
             ))}
           </ol>

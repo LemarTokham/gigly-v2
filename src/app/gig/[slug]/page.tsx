@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { GoingButton } from "@/components/going-button";
+import { HypeButton } from "@/components/hype-button";
 import { clockTime, dayWord, money, nightOf, todayNight } from "@/lib/format";
-import { getGigBySlug, getMyState } from "@/lib/queries";
+import { getGigBySlug, getHypeState, getMyState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,11 @@ export async function generateMetadata({
 
 export default async function GigPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [gig, me] = await Promise.all([getGigBySlug(slug), getMyState()]);
+  const [gig, me, hype] = await Promise.all([
+    getGigBySlug(slug),
+    getMyState(),
+    getHypeState(),
+  ]);
   if (!gig) notFound();
 
   const head = gig.lineup[0]?.artist;
@@ -104,6 +109,15 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
               <b className="block text-base leading-tight font-bold">{artist.name}</b>
               <i className="text-soft block text-[13px] not-italic">{artist.genre}</i>
             </Link>
+            <HypeButton
+              artistId={artist.id}
+              artistName={artist.name}
+              hyped={hype.hyped.has(artist.id)}
+              hypeable={new Date(gig.starts_at) > new Date() && gig.status === "live"}
+              hypesLeft={hype.left}
+              signedIn={!!hype.userId}
+              path={`/gig/${gig.slug}`}
+            />
           </div>
         ))}
       </div>

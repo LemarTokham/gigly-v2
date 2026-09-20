@@ -371,3 +371,56 @@ export async function getMyGoing(): Promise<GigRow[]> {
 
   return (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
 }
+
+/** The signed-in user's hype state: what they back, and how many are left. */
+export async function getHypeState(): Promise<{
+  userId: string | null;
+  hyped: Set<string>;
+  left: number;
+}> {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { userId: null, hyped: new Set(), left: 3 };
+
+  // Only hypes still inside the 7 day window count as "backing now" — an older
+  // row is spent and the artist can be hyped again.
+  const cutoff = new Date(Date.now() - 7 * 864e5).toISOString();
+  const [{ data: rows }, { data: left }] = await Promise.all([
+    db.from("hypes").select("artist_id").eq("user_id", user.id).gt("created_at", cutoff),
+    db.rpc("hypes_remaining"),
+  ]);
+
+  return {
+    userId: user.id,
+    hyped: new Set((rows ?? []).map((r) => r.artist_id)),
+    left: left ?? 0,
+  };
+}
+
+/** Artists the user is backing right now, with how long each has left. */
+export async function getMyHypes() {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return [];
+
+  const cutoff = new Date(Date.now() - 7 * 864e5).toISOString();
+  const { data } = await db
+    .from("hypes")
+    .select(`created_at, artist:artists!inner ( ${ARTIST_FIELDS} )`)
+    .eq("user_id", user.id)
+    .gt("created_at", cutoff)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((r) => ({
+    createdAt: r.created_at,
+    daysLeft: Math.max(
+      1,
+      Math.ceil((7 * 864e5 - (Date.now() - new Date(r.created_at).getTime())) / 864e5),
+    ),
+    artist: r.artist as unknown as SearchResults["artists"][number],
+  }));
+}
