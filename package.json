@@ -13,7 +13,8 @@
     "db:reset": "sh scripts/supabase.sh db reset",
     "db:types": "sh scripts/supabase.sh gen types typescript --local > src/lib/database.types.ts",
     "db:push": "sh scripts/supabase.sh db push",
-    "test": "node --test \"tests/**/*.test.mts\""
+    "test": "node --test \"tests/**/*.test.mts\"",
+    "seed:hypes": "node --env-file=.env.local scripts/seed-hypes.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

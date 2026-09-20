@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Bowlby_One } from "next/font/google";
 import "./globals.css";
+import { TabBar } from "@/components/tab-bar";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -41,11 +42,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  sheet,
+}: Readonly<{ children: React.ReactNode; sheet: React.ReactNode }>) {
   return (
     <html lang="en-GB">
       <body className={`${archivo.variable} ${bowlby.variable} antialiased`}>
-        {children}
+        <div className="mx-auto max-w-[500px] px-4 pb-24">{children}</div>
+        {sheet}
+        <TabBar />
       </body>
     </html>
   );

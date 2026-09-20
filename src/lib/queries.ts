@@ -1,0 +1,299 @@
+import { createClient } from "@/lib/supabase/server";
+import { nightRange } from "@/lib/format";
+import type { Database } from "@/lib/database.types";
+
+export type GenreGroup = Database["public"]["Enums"]["genre_group"];
+
+export const GENRE_GROUPS: GenreGroup[] = [
+  "Indie",
+  "Punk",
+  "Jazz",
+  "Electronic",
+  "Folk",
+  "Soul",
+  "Hip hop",
+];
+
+/** Everything a card or page needs to draw an artist, including poster art. */
+const ARTIST_FIELDS =
+  "id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band";
+
+const GIG_FIELDS = `
+  id, slug, starts_at, price_pence, ticket_url, status, submitted_by,
+  venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
+  lineup:gig_artists ( position, artist:artists!inner ( ${ARTIST_FIELDS} ) )
+`;
+
+export type GigRow = {
+  id: string;
+  slug: string;
+  starts_at: string;
+  price_pence: number;
+  ticket_url: string | null;
+  status: Database["public"]["Enums"]["gig_status"];
+  submitted_by: string | null;
+  venue: {
+    id: string;
+    name: string;
+    slug: string;
+    area: string;
+    capacity: number | null;
+    map_x: number | null;
+    map_y: number | null;
+  };
+  lineup: {
+    position: number;
+    artist: {
+      id: string;
+      name: string;
+      slug: string;
+      genre: string;
+      genre_group: GenreGroup;
+      from_area: string | null;
+      photo_url: string | null;
+      art_seed: number;
+      art_palette: number;
+      art_band: string[];
+    };
+  }[];
+};
+
+/** Headliner first. position 0 is the headliner. */
+function sortLineup<T extends { lineup: { position: number }[] }>(gig: T): T {
+  gig.lineup.sort((a, b) => a.position - b.position);
+  return gig;
+}
+
+/**
+ * Upcoming live gigs, optionally narrowed to one night and one genre bucket.
+ *
+ * The night filter is a `starts_at` range rather than a computed bucket per
+ * row, so it uses the partial index on live gigs. The genre filter is a
+ * separate lookup first: filtering on an embedded resource in PostgREST also
+ * prunes the embedded rows, which would silently drop the rest of a line-up
+ * from the card.
+ */
+export async function getUpcomingGigs(opts: {
+  night?: string | null;
+  genre?: GenreGroup | null;
+  limit?: number;
+} = {}): Promise<GigRow[]> {
+  const db = await createClient();
+
+  let gigIds: string[] | null = null;
+  if (opts.genre) {
+    const { data } = await db
+      .from("gig_artists")
+      .select("gig_id, artists!inner(genre_group)")
+      .eq("artists.genre_group", opts.genre);
+    gigIds = [...new Set((data ?? []).map((r) => r.gig_id))];
+    if (gigIds.length === 0) return [];
+  }
+
+  let q = db
+    .from("gigs")
+    .select(GIG_FIELDS)
+    .eq("status", "live")
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  if (opts.night) {
+    const { start, end } = nightRange(opts.night);
+    q = q.gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString());
+  }
+  if (gigIds) q = q.in("id", gigIds);
+  if (opts.limit) q = q.limit(opts.limit);
+
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data as unknown as GigRow[]).map(sortLineup);
+}
+
+export async function getGigBySlug(slug: string): Promise<GigRow | null> {
+  const db = await createClient();
+  const { data, error } = await db.from("gigs").select(GIG_FIELDS).eq("slug", slug).maybeSingle();
+  if (error) throw error;
+  return data ? sortLineup(data as unknown as GigRow) : null;
+}
+
+export type ChartRow = Database["public"]["Views"]["artist_chart"]["Row"];
+
+/** The chart: artists with an upcoming live gig, by hypes in the last 7 days. */
+export async function getChart(limit?: number): Promise<ChartRow[]> {
+  const db = await createClient();
+  let q = db.from("artist_chart").select("*").order("position", { ascending: true });
+  if (limit) q = q.limit(limit);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type ArtistPage = {
+  artist: Database["public"]["Tables"]["artists"]["Row"];
+  gigs: GigRow[];
+  followerCount: number;
+  hypeCount: number;
+  position: number | null;
+};
+
+export async function getArtistBySlug(slug: string): Promise<ArtistPage | null> {
+  const db = await createClient();
+
+  const { data: artist, error } = await db
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!artist) return null;
+
+  const [{ data: links }, { data: stats }, { data: chart }] = await Promise.all([
+    db.from("gig_artists").select("gig_id").eq("artist_id", artist.id),
+    db.from("artist_stats").select("follower_count").eq("artist_id", artist.id).maybeSingle(),
+    db.from("artist_chart").select("hype_count, position").eq("id", artist.id).maybeSingle(),
+  ]);
+
+  const ids = (links ?? []).map((l) => l.gig_id);
+  let gigs: GigRow[] = [];
+  if (ids.length) {
+    const { data } = await db
+      .from("gigs")
+      .select(GIG_FIELDS)
+      .in("id", ids)
+      .eq("status", "live")
+      .gt("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true });
+    gigs = (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
+  }
+
+  return {
+    artist,
+    gigs,
+    followerCount: stats?.follower_count ?? 0,
+    hypeCount: chart?.hype_count ?? 0,
+    position: chart?.position ?? null,
+  };
+}
+
+export type VenuePage = {
+  venue: Database["public"]["Tables"]["venues"]["Row"];
+  gigs: GigRow[];
+};
+
+export async function getVenueBySlug(slug: string): Promise<VenuePage | null> {
+  const db = await createClient();
+  const { data: venue, error } = await db
+    .from("venues")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!venue) return null;
+
+  const { data } = await db
+    .from("gigs")
+    .select(GIG_FIELDS)
+    .eq("venue_id", venue.id)
+    .eq("status", "live")
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  return { venue, gigs: (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [] };
+}
+
+export type VenueWithCount = Database["public"]["Tables"]["venues"]["Row"] & {
+  gig_count: number;
+  tonight: boolean;
+  next_gig: GigRow | null;
+};
+
+/** Venues with how many live gigs fall in the window, for the map. */
+export async function getVenuesForMap(range: "tonight" | "week"): Promise<VenueWithCount[]> {
+  const db = await createClient();
+  const [{ data: venues }, gigs] = await Promise.all([
+    db.from("venues").select("*").order("name"),
+    getUpcomingGigs(),
+  ]);
+
+  const { start: tonightStart, end: tonightEnd } = nightRange(
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(
+      new Date(Date.now() - 4 * 3600_000),
+    ),
+  );
+  const weekEnd = new Date(Date.now() + 7 * 864e5);
+
+  return (venues ?? []).map((v) => {
+    const mine = gigs.filter((g) => g.venue.id === v.id);
+    const inRange = mine.filter((g) => {
+      const t = new Date(g.starts_at);
+      return range === "tonight" ? t >= tonightStart && t < tonightEnd : t <= weekEnd;
+    });
+    return {
+      ...v,
+      gig_count: inRange.length,
+      tonight: mine.some((g) => {
+        const t = new Date(g.starts_at);
+        return t >= tonightStart && t < tonightEnd;
+      }),
+      next_gig: mine[0] ?? null,
+    };
+  });
+}
+
+export type SearchResults = {
+  artists: Pick<
+    Database["public"]["Tables"]["artists"]["Row"],
+    | "id"
+    | "name"
+    | "slug"
+    | "genre"
+    | "genre_group"
+    | "photo_url"
+    | "art_seed"
+    | "art_palette"
+    | "art_band"
+  >[];
+  venues: Pick<Database["public"]["Tables"]["venues"]["Row"], "id" | "name" | "slug" | "area">[];
+};
+
+export async function search(q: string): Promise<SearchResults> {
+  const db = await createClient();
+  const term = q.trim();
+
+  if (!term) {
+    const { data } = await db.from("artists").select(ARTIST_FIELDS).order("name").limit(5);
+    return { artists: data ?? [], venues: [] };
+  }
+
+  // ilike with a leading wildcard cannot use a btree index. Fine for one city;
+  // swap to a trigram index or tsvector when the artist table gets big.
+  const like = `%${term.replace(/[%_]/g, "\\$&")}%`;
+  const [{ data: artists }, { data: venues }] = await Promise.all([
+    db
+      .from("artists")
+      .select(ARTIST_FIELDS)
+      .or(`name.ilike.${like},genre.ilike.${like}`)
+      .order("name")
+      .limit(8),
+    db
+      .from("venues")
+      .select("id, name, slug, area")
+      .or(`name.ilike.${like},area.ilike.${like}`)
+      .order("name")
+      .limit(5),
+  ]);
+
+  return { artists: artists ?? [], venues: venues ?? [] };
+}
+
+/**
+ * Hypes in the last 7 days, keyed by artist id. A gig card shows the total
+ * across its line-up, as the prototype does, so a card reflects the pull of
+ * the whole bill rather than just the headliner.
+ */
+export async function getHypeCounts(): Promise<Map<string, number>> {
+  const db = await createClient();
+  const { data, error } = await db.from("artist_chart").select("id, hype_count");
+  if (error) throw error;
+  return new Map((data ?? []).map((r) => [r.id!, r.hype_count ?? 0]));
+}

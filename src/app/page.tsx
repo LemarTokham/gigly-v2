@@ -1,68 +1,102 @@
-/**
- * Step 1 placeholder. Exists to prove the token layer and fonts resolve in both
- * themes — replaced by the real what's-on page in step 2.
- */
+import Link from "next/link";
+import { TopBar } from "@/components/top-bar";
+import { GigCard } from "@/components/gig-card";
+import { DayStrip, GenreChips } from "@/components/filters";
+import { ArtistImage } from "@/components/artist-image";
+import { Icon } from "@/components/icon";
+import { dayWord, todayNight } from "@/lib/format";
+import {
+  getChart,
+  getHypeCounts,
+  getUpcomingGigs,
+  GENRE_GROUPS,
+  type GenreGroup,
+} from "@/lib/queries";
 
-const TOKENS = [
-  "bg",
-  "ink",
-  "soft",
-  "card",
-  "line",
-  "raise",
-  "hype",
-  "on-hype",
-  "gold",
-  "go",
-  "down",
-  "focus",
-  "river",
-  "land",
-  "road",
-] as const;
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function WhatsOn({
+  searchParams,
+}: {
+  searchParams: Promise<{ night?: string; genre?: string }>;
+}) {
+  const sp = await searchParams;
+  const today = todayNight();
+
+  const night = sp.night && /^\d{4}-\d{2}-\d{2}$/.test(sp.night) ? sp.night : null;
+  const genre = GENRE_GROUPS.includes(sp.genre as GenreGroup) ? (sp.genre as GenreGroup) : null;
+
+  const [gigs, chart, hypeCounts] = await Promise.all([
+    getUpcomingGigs({ night, genre }),
+    getChart(8),
+    getHypeCounts(),
+  ]);
+
+  const heading = night ? dayWord(night, today) : "Coming up";
+
   return (
-    <main className="mx-auto max-w-[500px] px-4 pb-24">
-      <header className="flex items-baseline gap-2.5 py-3">
-        <h1 className="font-display text-[28px] leading-none">Gigly</h1>
-        <span className="text-[13px] font-semibold text-soft">Liverpool</span>
-      </header>
+    <>
+      <TopBar />
+      <DayStrip today={today} night={night} genre={genre} />
+      <GenreChips today={today} night={night} genre={genre} />
 
-      <p className="text-soft text-sm">
-        Step 1 — project setup. Schema and seed data next.
-      </p>
-
-      <h2 className="font-display mt-6 mb-2 text-xl">Type</h2>
-      <div className="border-line bg-card rounded-2xl border p-4">
-        <p className="font-display text-2xl leading-tight">Bowlby One display</p>
-        <p className="mt-2 text-base">Archivo regular 400</p>
-        <p className="text-base font-semibold">Archivo semibold 600</p>
-        <p className="text-base font-bold">Archivo bold 700</p>
+      <div className="mt-[22px] mb-2.5 flex items-center justify-between">
+        <h2 className="font-display text-xl leading-[1.1]">Backed this week</h2>
+        <Link href="/chart" className="text-soft inline-flex items-center gap-1 text-sm font-bold">
+          Chart
+          <Icon name="go" />
+        </Link>
       </div>
 
-      <h2 className="font-display mt-6 mb-2 text-xl">Palette</h2>
-      <ul className="grid grid-cols-3 gap-2">
-        {TOKENS.map((t) => (
-          <li
-            key={t}
-            className="border-line bg-card overflow-hidden rounded-xl border"
-          >
-            <div
-              className="border-line h-12 border-b"
-              style={{ background: `var(--${t})` }}
-            />
-            <span className="text-soft block px-2 py-1.5 text-xs font-semibold">
-              {t}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {chart.length > 0 ? (
+        <div className="-mx-4 flex gap-3.5 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {chart.map((a, i) => (
+            <Link key={a.id} href={`/artist/${a.slug}`} className="w-[84px] shrink-0 text-center">
+              <span className="border-line relative inline-block rounded-full border-[3px] p-[3px]">
+                <span className="relative block size-[72px] overflow-hidden rounded-full">
+                  <ArtistImage
+                    artist={{
+                      slug: a.slug!,
+                      name: a.name!,
+                      photo_url: a.photo_url,
+                      art_seed: a.art_seed!,
+                      art_palette: a.art_palette!,
+                      art_band: a.art_band!,
+                    }}
+                  />
+                </span>
+                <span className="bg-ink text-bg font-display border-bg absolute -bottom-0.5 -left-0.5 grid size-[26px] place-items-center rounded-full border-2 text-[13px]">
+                  {i + 1}
+                </span>
+              </span>
+              <em className="mt-1.5 line-clamp-2 block text-xs leading-tight font-semibold not-italic">
+                {a.name}
+              </em>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-soft text-sm">No gigs listed, so nobody to back yet.</p>
+      )}
 
-      <p className="text-soft mt-6 text-sm">
-        Dark is the default. Switch your device to light and this should flip to
-        the prototype&rsquo;s light palette.
-      </p>
-    </main>
+      <div className="mt-[22px] mb-2.5 flex items-center justify-between">
+        <h2 className="font-display text-xl leading-[1.1]">{heading}</h2>
+        <span className="text-soft text-sm">
+          {gigs.length} {gigs.length === 1 ? "gig" : "gigs"}
+        </span>
+      </div>
+
+      {gigs.length > 0 ? (
+        <div className="grid gap-4">
+          {gigs.map((g) => (
+            <GigCard key={g.id} gig={g} today={today} hypeCounts={hypeCounts} />
+          ))}
+        </div>
+      ) : (
+        <div className="border-line text-soft rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
+          Nothing listed yet.
+        </div>
+      )}
+    </>
   );
 }

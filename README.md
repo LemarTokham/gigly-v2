@@ -29,7 +29,8 @@ nothing to your hosted project.
 | `npm run db:reset` | drop, replay all migrations, reseed |
 | `npm run db:types` | regenerate `src/lib/database.types.ts` |
 | `npm run db:push` | apply migrations to the hosted project |
-| `npm test` | hype rule tests against the local database |
+| `npm run seed:hypes` | synthetic users + hypes so the chart has data |
+| `npm test` | hype rules and date handling |
 
 `scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
 socket under `$HOME` without anything being added to your shell profile.
@@ -71,6 +72,18 @@ Error codes the UI branches on:
 | `GY002` | already hyping this artist, still inside the 7 day window |
 | `GY003` | artist has no upcoming live gig |
 | `GY004` | no hype to take back |
+
+## Two things that are not the prototype
+
+**Nights, not calendar days.** A gig at 00:30 on Saturday is Friday night out.
+Listings cut the night at 4am, so the day filters group a late gig with the
+evening it belongs to. The prototype buckets on the calendar day and puts that
+gig under Saturday.
+
+**Routes, not just sheets.** Tapping a gig opens a bottom sheet as it does in
+the prototype, but each one is also a real server-rendered route. Next's
+intercepting routes render the same component either way, so a pasted link
+opens the full page with its Open Graph tags rather than a modal over nothing.
 
 ## Layout
 
