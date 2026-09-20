@@ -40,6 +40,41 @@ const FALLBACK = {
 };
 
 /**
+ * Extra words that steer Google away from the street and towards the business.
+ * Searching "24 Kitchen Street, Baltic Triangle" returns the building; adding
+ * "music venue" returns the venue with its 288 reviews.
+ */
+const PLACE_HINT = {
+  "24-kitchen-street": "24 Kitchen Street music venue Liverpool",
+  "the-caledonia": "The Caledonia pub Liverpool",
+  quarry: "Quarry live music venue Hardman Street Liverpool",
+};
+
+/** A building or a stretch of road is never the venue we meant. */
+const NOT_A_VENUE = new Set(["premise", "subpremise", "street_address", "route", "locality"]);
+
+/** "The Shipping Forecast" and "Shipping Forecast" are the same place. */
+const normalise = (s) =>
+  s.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+
+/**
+ * Google will answer any query with something. Without a check, EBGBs — which
+ * no longer has a listing — silently resolved to a different venue round the
+ * corner, and the map would have shown its reviews as if they were ours.
+ */
+function placeLooksRight(venueName, candidate) {
+  const got = candidate.displayName?.text ?? "";
+  const a = normalise(venueName);
+  const b = normalise(got);
+
+  if (!b) return { ok: false, why: "no name" };
+  if (!(b.includes(a) || a.includes(b))) return { ok: false, why: `is "${got}"` };
+  if (NOT_A_VENUE.has(candidate.primaryType)) return { ok: false, why: `is a ${candidate.primaryType}` };
+  if (!candidate.userRatingCount) return { ok: false, why: "no reviews, likely a building record" };
+  return { ok: true, why: `${candidate.rating}\u2605 (${candidate.userRatingCount})` };
+}
+
+/**
  * Roughly the middle of the city. Any result far from here is wrong: a venue
  * name like "Quarry" matches a road in Woolton five miles away, and a
  * plausible-looking wrong pin is worse than an obviously missing one.
@@ -121,6 +156,7 @@ for (const v of venues) {
 
   // --- Google: place id only ----------------------------------------------
   let placeId = v.google_place_id;
+  let placeNote = placeId ? "kept" : "-";
   if (maps && !placeId) {
     try {
       const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -128,16 +164,36 @@ for (const v of venues) {
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": maps,
-          "X-Goog-FieldMask": "places.id,places.displayName",
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.primaryType,places.rating,places.userRatingCount",
         },
-        body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
+        body: JSON.stringify({
+          textQuery: PLACE_HINT[v.slug] ?? query,
+          maxResultCount: 5,
+          locationBias: {
+            circle: { center: { latitude: CENTRE.lat, longitude: CENTRE.lng }, radius: 6000 },
+          },
+        }),
       });
       const body = await res.json();
+
       if (body.error) {
         if (placeFailures === 0) console.warn(`  ! Places: ${body.error.message}\n`);
         placeFailures++;
-      } else if (body.places?.[0]) {
-        placeId = body.places[0].id;
+      } else {
+        // Take the first candidate that is actually this venue. Better to
+        // store nothing than to show another venue's reviews as ours.
+        let reason = "nothing returned";
+        for (const candidate of body.places ?? []) {
+          const verdict = placeLooksRight(v.name, candidate);
+          if (verdict.ok) {
+            placeId = candidate.id;
+            placeNote = verdict.why;
+            break;
+          }
+          reason = verdict.why;
+        }
+        if (!placeId) placeNote = `skipped, best match ${reason}`;
       }
     } catch (e) {
       console.warn(`  ! ${v.name}: Places request failed — ${e.message}`);
@@ -146,9 +202,7 @@ for (const v of venues) {
   }
 
   const coords = lat && lng ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "NOT FOUND";
-  console.log(
-    `${v.name.padEnd(24)} ${coords.padEnd(21)} ${precision.padEnd(20)} ${placeId ? "place id ok" : "-"}`,
-  );
+  console.log(`${v.name.padEnd(24)} ${coords.padEnd(21)} ${precision.padEnd(18)} ${placeNote}`);
 
   if (write && (lat !== v.lat || lng !== v.lng || placeId !== v.google_place_id)) {
     const { error: upErr } = await db

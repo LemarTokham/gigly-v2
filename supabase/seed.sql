@@ -9,11 +9,11 @@ insert into public.venues
   (name, slug, area, capacity, map_x, map_y, lat, lng, google_place_id) values
   ('The Jacaranda', 'the-jacaranda', 'Ropewalks', 150, 270, 150, 53.4024301, -2.9795756, 'ChIJD1yBJiQhe0gRCJaNbWKrTh4'),
   ('The Shipping Forecast', 'the-shipping-forecast', 'Ropewalks', 200, 345, 180, 53.4025238, -2.9793737, 'ChIJYUK5IiQhe0gRge5OezzWqgU'),
-  ('EBGBs', 'ebgbs', 'Ropewalks', 250, 290, 235, 53.4015947, -2.9785309, 'ChIJ6dEiJiQhe0gRISx3sp0zlT8'),
+  ('EBGBs', 'ebgbs', 'Ropewalks', 250, 290, 235, 53.4015947, -2.9785309, NULL),
   ('Kazimier Stockroom', 'kazimier-stockroom', 'Ropewalks', 100, 378, 255, 53.4023835, -2.9822026, 'ChIJMTd0xSUhe0gR1G77FFSwi-c'),
-  ('Quarry', 'quarry', 'Hardman Street', 180, 460, 165, 53.4017473, -2.9724365, 'ChIJMQZDnTMhe0gRAX9CqciZ1Q0'),
-  ('The Caledonia', 'the-caledonia', 'Georgian Quarter', 80, 505, 285, 53.4007666, -2.9700995, 'ChIJbW2TGh8he0gR86tAwqjF5iQ'),
-  ('24 Kitchen Street', '24-kitchen-street', 'Baltic Triangle', 400, 300, 365, 53.3973818, -2.9819296, 'ChIJGTgI7Sche0gRJ4hJtvX_wKg'),
+  ('Quarry', 'quarry', 'Hardman Street', 180, 460, 165, 53.4018204, -2.9724189, 'ChIJMQZDnTMhe0gRAX9CqciZ1Q0'),
+  ('The Caledonia', 'the-caledonia', 'Georgian Quarter', 80, 505, 285, 53.4007666, -2.9700995, 'ChIJ5zUcGx8he0gR1k_clPBRj1Q'),
+  ('24 Kitchen Street', '24-kitchen-street', 'Baltic Triangle', 400, 300, 365, 53.3973818, -2.9819296, 'ChIJXZ-T7Sche0gRHy9yN-iXEgU'),
   ('Future Yard', 'future-yard', 'Birkenhead', 280, 58, 295, 53.3911979, -3.0184714, 'ChIJd8JYLgcne0gRpegwtbxwKkY');
 
 insert into public.artists

@@ -29,7 +29,10 @@ if (!url || !key) {
   process.exit(1);
 }
 
-if (!/127\.0\.0\.1|localhost/.test(url)) {
+// Local means this machine or this network — the LAN address is still the
+// local stack, just reachable from a phone. Anything else is a real project.
+const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+if (!LOCAL.test(url)) {
   console.error(`Refusing to seed synthetic users into a non-local project:\n  ${url}`);
   console.error("This creates throwaway auth users. Point at the local stack first.");
   process.exit(1);

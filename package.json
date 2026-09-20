@@ -16,7 +16,8 @@
     "test": "node --test \"tests/**/*.test.mts\"",
     "seed:hypes": "node --env-file=.env.local scripts/seed-hypes.mjs",
     "make:admin": "node --env-file=.env.local scripts/make-admin.mjs",
-    "venues:locate": "node --env-file=.env.local scripts/locate-venues.mjs"
+    "venues:locate": "node --env-file=.env.local scripts/locate-venues.mjs",
+    "dev:lan": "node scripts/use-lan.mjs && next dev -H 0.0.0.0"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
