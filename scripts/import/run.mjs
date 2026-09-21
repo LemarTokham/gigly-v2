@@ -92,6 +92,9 @@ for (const source of sources) {
       p_price_pence: gig.pricePence ?? null,
       p_ticket_url: gig.ticketUrl ?? null,
       p_support: gig.support ?? [],
+      p_genre: gig.genre ?? null,
+      p_genre_group: gig.genreGroup ?? null,
+      p_source_title: gig.sourceTitle ?? null,
     });
 
     if (error) {

@@ -260,6 +260,7 @@ export type Database = {
           slug: string
           source: string
           source_ref: string | null
+          source_title: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null
@@ -275,6 +276,7 @@ export type Database = {
           slug: string
           source?: string
           source_ref?: string | null
+          source_title?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
@@ -290,6 +292,7 @@ export type Database = {
           slug?: string
           source?: string
           source_ref?: string | null
+          source_title?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
@@ -490,9 +493,12 @@ export type Database = {
       import_gig: {
         Args: {
           p_artist_name: string
+          p_genre?: string
+          p_genre_group?: Database["public"]["Enums"]["genre_group"]
           p_price_pence?: number
           p_source: string
           p_source_ref: string
+          p_source_title?: string
           p_starts_at: string
           p_support?: string[]
           p_ticket_url?: string
@@ -523,6 +529,7 @@ export type Database = {
           slug: string
           source: string
           source_ref: string | null
+          source_title: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null

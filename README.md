@@ -176,7 +176,22 @@ the Maps key it is a real secret and only ever runs in the import script.
 
 Run `npm run venues:skiddle -- --write` once to map venues to Skiddle ids,
 then `npm run import -- --write`. Venue matches are verified by name, because
-a near-miss would quietly attach another room's listings to ours.
+a near-miss would quietly attach another room's listings to ours. Those ids
+are baked into the seed alongside the coordinates, so `db:reset` does not
+quietly break the importer.
+
+Two thirds of Skiddle's live events carry no parsed artist list, so the name
+is read out of the event title — "AnotherVU: A Tribute to The Velvet
+Underground & Nico" becomes "AnotherVU". Where that happens the original title
+is kept in `gigs.source_title` and shown in the approval queue, so a bad parse
+is obvious rather than becoming a junk artist page. Two other traps in their
+data: `entryprice` exists on every event and is empty on all of them (the
+money is in `ticketpricing`), and `startdate` carries a `+00:00` offset even
+in British Summer Time, so the instant is built from the date plus the door
+time read as London local.
+
+After a `db:reset` the admin flag goes with `auth.users`. Sign in again, then
+`npm run make:admin` — it reads `ADMIN_EMAIL` from `.env.local` if you set one.
 
 ### Sample data
 

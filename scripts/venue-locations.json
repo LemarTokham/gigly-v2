@@ -2,41 +2,49 @@
   "24-kitchen-street": {
     "lat": 53.3973818,
     "lng": -2.9819296,
-    "place_id": "ChIJXZ-T7Sche0gRHy9yN-iXEgU"
+    "place_id": "ChIJXZ-T7Sche0gRHy9yN-iXEgU",
+    "skiddle_id": 48870
   },
   "ebgbs": {
     "lat": 53.4015947,
     "lng": -2.9785309,
-    "place_id": null
+    "place_id": null,
+    "skiddle_id": null
   },
   "future-yard": {
     "lat": 53.3911979,
     "lng": -3.0184714,
-    "place_id": "ChIJd8JYLgcne0gRpegwtbxwKkY"
+    "place_id": "ChIJd8JYLgcne0gRpegwtbxwKkY",
+    "skiddle_id": 103119
   },
   "kazimier-stockroom": {
     "lat": 53.4023835,
     "lng": -2.9822026,
-    "place_id": "ChIJMTd0xSUhe0gR1G77FFSwi-c"
+    "place_id": "ChIJMTd0xSUhe0gR1G77FFSwi-c",
+    "skiddle_id": 93958
   },
   "quarry": {
     "lat": 53.4018204,
     "lng": -2.9724189,
-    "place_id": "ChIJMQZDnTMhe0gRAX9CqciZ1Q0"
+    "place_id": "ChIJMQZDnTMhe0gRAX9CqciZ1Q0",
+    "skiddle_id": 134719
   },
   "the-caledonia": {
     "lat": 53.4007666,
     "lng": -2.9700995,
-    "place_id": "ChIJ5zUcGx8he0gR1k_clPBRj1Q"
+    "place_id": "ChIJ5zUcGx8he0gR1k_clPBRj1Q",
+    "skiddle_id": null
   },
   "the-jacaranda": {
     "lat": 53.4024301,
     "lng": -2.9795756,
-    "place_id": "ChIJD1yBJiQhe0gRCJaNbWKrTh4"
+    "place_id": "ChIJD1yBJiQhe0gRCJaNbWKrTh4",
+    "skiddle_id": 94060
   },
   "the-shipping-forecast": {
     "lat": 53.4025238,
     "lng": -2.9793737,
-    "place_id": "ChIJYUK5IiQhe0gRge5OezzWqgU"
+    "place_id": "ChIJYUK5IiQhe0gRge5OezzWqgU",
+    "skiddle_id": 107278
   }
 }

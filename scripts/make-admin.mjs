@@ -9,11 +9,14 @@
  */
 import { createClient } from "@supabase/supabase-js";
 
-const email = process.argv[2];
 const revoke = process.argv.includes("--revoke");
+// ADMIN_EMAIL in .env.local saves retyping it after every db:reset, which
+// wipes auth.users and takes the admin flag with it.
+const email = process.argv.find((a) => a.includes("@")) ?? process.env.ADMIN_EMAIL;
 
-if (!email || email.startsWith("--")) {
+if (!email) {
   console.error("Usage: npm run make:admin -- you@example.com [--revoke]");
+  console.error("Or set ADMIN_EMAIL in .env.local and run it with no argument.");
   process.exit(1);
 }
 

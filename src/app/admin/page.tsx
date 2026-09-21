@@ -21,7 +21,7 @@ export default async function AdminPage() {
     .from("gigs")
     .select(`
       id, slug, starts_at, price_pence, ticket_url, status, submitted_by, submitted_as,
-      source, source_ref, imported_at,
+      source, source_ref, source_title, imported_at,
       venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
       lineup:gig_artists ( position, artist:artists!inner (
         id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band
@@ -34,6 +34,7 @@ export default async function AdminPage() {
     submitted_as: string | null;
     source: string;
     source_ref: string | null;
+    source_title: string | null;
   })[];
   const today = todayNight();
 
@@ -98,6 +99,17 @@ export default async function AdminPage() {
                       </>
                     )}
                   </p>
+                  {/* Two thirds of imported events carry no artist list, so the
+                      name was read out of the title. Showing what it was read
+                      from is the difference between spotting a bad parse and
+                      approving a junk artist page. */}
+                  {gig.source_title && (
+                    <p className="border-line bg-bg text-soft mt-2 rounded-xl border px-2.5 py-2 text-[13px]">
+                      Name read from:{" "}
+                      <span className="text-ink font-semibold">{gig.source_title}</span>
+                    </p>
+                  )}
+
                   {gig.ticket_url ? (
                     <a
                       href={gig.ticket_url}
