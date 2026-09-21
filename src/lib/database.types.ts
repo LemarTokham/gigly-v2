@@ -255,6 +255,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          image_url: string | null
           imported_at: string | null
           price_pence: number
           slug: string
@@ -271,6 +272,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          image_url?: string | null
           imported_at?: string | null
           price_pence?: number
           slug: string
@@ -287,6 +289,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          image_url?: string | null
           imported_at?: string | null
           price_pence?: number
           slug?: string
@@ -492,9 +495,12 @@ export type Database = {
       hypes_remaining: { Args: never; Returns: number }
       import_gig: {
         Args: {
+          p_artist_links?: Json
           p_artist_name: string
+          p_artist_photo?: string
           p_genre?: string
           p_genre_group?: Database["public"]["Enums"]["genre_group"]
+          p_image_url?: string
           p_price_pence?: number
           p_source: string
           p_source_ref: string
@@ -524,6 +530,7 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          image_url: string | null
           imported_at: string | null
           price_pence: number
           slug: string

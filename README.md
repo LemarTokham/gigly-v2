@@ -198,6 +198,17 @@ a near-miss would quietly attach another room's listings to ours. Those ids
 are baked into the seed alongside the coordinates, so `db:reset` does not
 quietly break the importer.
 
+Every event brings artwork, and where Skiddle parsed an artist list it brings
+that artist's photo and Spotify link too. Images are **referenced from their
+CDN, never copied** — the pictures belong to the promoters and to Skiddle, and
+their API is non-commercial use only. Around one image in six points at an
+object the CDN no longer serves, so every URL is checked once at import and
+the dead ones dropped, leaving the artist with their generated poster art
+rather than a broken image nothing in the data would flag.
+
+`GigImage` picks, in order: the event's artwork, the headliner's photo, then
+the generated art. Everything that shows a gig goes through it.
+
 Two thirds of Skiddle's live events carry no parsed artist list, so the name
 is read out of the event title — "AnotherVU: A Tribute to The Velvet
 Underground & Nico" becomes "AnotherVU". Where that happens the original title

@@ -95,6 +95,9 @@ for (const source of sources) {
       p_genre: gig.genre ?? null,
       p_genre_group: gig.genreGroup ?? null,
       p_source_title: gig.sourceTitle ?? null,
+      p_image_url: gig.imageUrl ?? null,
+      p_artist_photo: gig.artistPhoto ?? null,
+      p_artist_links: gig.artistLinks ?? null,
     });
 
     if (error) {

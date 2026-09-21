@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { GoingButton } from "@/components/going-button";
 import { HypeButton } from "@/components/hype-button";
@@ -42,7 +43,7 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
   return (
     <article className="-mx-4">
       <div className="relative aspect-[16/10] w-full overflow-hidden text-white">
-        {head && <ArtistImage artist={head} />}
+        <GigImage gig={gig} priority />
         <span className="pointer-events-none absolute inset-x-0 top-[40%] bottom-0 bg-gradient-to-t from-[rgba(10,6,20,0.88)] to-transparent" />
         <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-[rgba(10,6,20,0.72)] px-2.5 py-[5px] text-[13px] font-bold">
           {money(gig.price_pence)}

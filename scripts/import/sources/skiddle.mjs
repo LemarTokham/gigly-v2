@@ -84,13 +84,67 @@ function fromTitle(title) {
   return name;
 }
 
-/** The headline act, and whether we are confident about it. */
+/**
+ * The headline act, its photo and its streaming link, and whether we are
+ * confident about the name.
+ *
+ * A photo only ever exists where Skiddle parsed an artist list, which is the
+ * same set of events where the name is reliable — so an uncertain name never
+ * arrives wearing someone else's face.
+ */
 function headliner(event) {
   const first = (event.artists ?? [])[0];
   const named = typeof first === "string" ? first : first?.name;
-  if (named?.trim()) return { name: named.trim(), guessed: false };
 
-  return { name: fromTitle(event.eventname ?? event.name), guessed: true };
+  if (named?.trim()) {
+    const links = {};
+    if (first?.spotifyartisturl) links.spotify = first.spotifyartisturl;
+    return {
+      name: named.trim(),
+      guessed: false,
+      photo: first?.image ?? null,
+      links: Object.keys(links).length ? links : null,
+    };
+  }
+
+  return {
+    name: fromTitle(event.eventname ?? event.name),
+    guessed: true,
+    photo: null,
+    links: null,
+  };
+}
+
+/** Event artwork, largest first. Referenced from their CDN, never copied. */
+function artwork(event) {
+  return event.xlargeimageurl ?? event.largeimageurl ?? event.imageurl ?? null;
+}
+
+/**
+ * Some image URLs in the feed point at objects the CDN no longer serves —
+ * around one artist photo in six comes back 403. Storing one of those means a
+ * broken image on an artist page with no way to tell from the data that it is
+ * broken, so they are checked once here and the dead ones dropped. The artist
+ * then keeps their generated poster art, which is the whole point of having it.
+ */
+async function reachable(urls) {
+  const distinct = [...new Set(urls.filter(Boolean))];
+  const good = new Set();
+
+  await Promise.all(
+    distinct.map(async (url) => {
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        if (res.ok) good.add(url);
+      } catch {
+        // unreachable counts as not good
+      }
+    }),
+  );
+
+  const dead = distinct.length - good.size;
+  if (dead) console.log(`  (dropped ${dead} of ${distinct.length} images the CDN no longer serves)`);
+  return good;
 }
 
 function support(event) {
@@ -164,7 +218,7 @@ const skiddleSource = {
         const startsAt = toInstant(e.date ?? e.startdate, e.openingtimes?.doorsopen);
         if (!startsAt) continue;
 
-        const { name, guessed } = headliner(e);
+        const { name, guessed, photo, links } = headliner(e);
         if (!name) continue;
         const { genre, group } = genreOf(e);
 
@@ -176,6 +230,9 @@ const skiddleSource = {
           startsAt,
           pricePence: toPence(e),
           ticketUrl: e.link ?? null,
+          imageUrl: artwork(e),
+          artistPhoto: photo,
+          artistLinks: links,
           genre,
           genreGroup: group,
           // Kept only when the name was read out of the title, so the approval
@@ -186,6 +243,13 @@ const skiddleSource = {
     }
 
     if (skippedCancelled) console.log(`  (skipped ${skippedCancelled} cancelled)`);
+
+    const good = await reachable(out.flatMap((g) => [g.imageUrl, g.artistPhoto]));
+    for (const gig of out) {
+      if (gig.imageUrl && !good.has(gig.imageUrl)) gig.imageUrl = null;
+      if (gig.artistPhoto && !good.has(gig.artistPhoto)) gig.artistPhoto = null;
+    }
+
     return out;
   },
 };

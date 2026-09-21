@@ -19,7 +19,7 @@ const ARTIST_FIELDS =
   "id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band";
 
 const GIG_FIELDS = `
-  id, slug, starts_at, price_pence, ticket_url, status, submitted_by,
+  id, slug, starts_at, price_pence, ticket_url, status, submitted_by, image_url,
   venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
   lineup:gig_artists ( position, artist:artists!inner ( ${ARTIST_FIELDS} ) )
 `;
@@ -32,6 +32,7 @@ export type GigRow = {
   ticket_url: string | null;
   status: Database["public"]["Enums"]["gig_status"];
   submitted_by: string | null;
+  image_url: string | null;
   venue: {
     id: string;
     name: string;

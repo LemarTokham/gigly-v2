@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { GoingButton } from "@/components/going-button";
 import { clockTime, dayWord, money, nightOf } from "@/lib/format";
@@ -28,7 +28,7 @@ export function GigCard({
   return (
     <article className="border-line bg-card overflow-hidden rounded-2xl border">
       <Link href={`/gig/${gig.slug}`} className="relative block aspect-[16/10] w-full text-white">
-        <ArtistImage artist={head} />
+        <GigImage gig={gig} />
         <span className="pointer-events-none absolute inset-x-0 top-[40%] bottom-0 bg-gradient-to-t from-[rgba(10,6,20,0.88)] to-transparent" />
 
         <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-[rgba(10,6,20,0.72)] px-2.5 py-[5px] text-[13px] font-bold">
