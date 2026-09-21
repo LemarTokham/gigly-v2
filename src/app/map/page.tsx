@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
-import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { VenueMap } from "@/components/venue-map";
 import type { MapVenue } from "@/components/venue-panel";
@@ -90,7 +90,7 @@ export default async function MapPage({
           <div key={v.id} className="border-line flex items-center gap-3 border-b py-2">
             {v.next_gig ? (
               <span className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl">
-                <ArtistImage artist={v.next_gig.lineup[0].artist} />
+                <GigImage gig={v.next_gig} />
               </span>
             ) : (
               <span className="bg-raise text-soft grid size-[54px] shrink-0 place-items-center rounded-xl">

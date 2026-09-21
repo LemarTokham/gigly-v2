@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { signOut } from "@/lib/actions/auth";
 import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
@@ -101,7 +102,7 @@ export default async function YouPage() {
           {going.map((g) => (
             <Link key={g.id} href={`/gig/${g.slug}`} className="w-[168px] shrink-0">
               <span className="relative block aspect-[16/10] overflow-hidden rounded-xl">
-                <ArtistImage artist={g.lineup[0].artist} />
+                <GigImage gig={g} />
               </span>
               <b className="mt-[7px] block text-[15px] leading-tight font-bold">
                 {g.lineup[0].artist.name}

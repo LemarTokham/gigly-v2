@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { AdminButtons } from "@/components/admin-buttons";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +21,7 @@ export default async function AdminPage() {
     .from("gigs")
     .select(`
       id, slug, starts_at, price_pence, ticket_url, status, submitted_by, submitted_as,
-      source, source_ref, source_title, imported_at,
+      source, source_ref, source_title, imported_at, image_url,
       venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
       lineup:gig_artists ( position, artist:artists!inner (
         id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band
@@ -59,7 +59,7 @@ export default async function AdminPage() {
               <article key={gig.id} className="border-line bg-card overflow-hidden rounded-2xl border">
                 {head && (
                   <Link href={`/gig/${gig.slug}`} className="relative block aspect-[16/10] w-full text-white">
-                    <ArtistImage artist={head} />
+                    <GigImage gig={gig} />
                     <span className="pointer-events-none absolute inset-x-0 top-[40%] bottom-0 bg-gradient-to-t from-[rgba(10,6,20,0.88)] to-transparent" />
                     <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
                       <b className="font-display block text-[clamp(20px,6vw,26px)] leading-[1.04]">
