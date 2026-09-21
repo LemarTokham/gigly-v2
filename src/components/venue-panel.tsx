@@ -206,27 +206,46 @@ export function VenuePanel({ venue }: { venue: MapVenue | null }) {
                 )}
               </div>
 
+              {/* Collapsed by default: the rating is the useful part at a
+                  glance, and five reviews push the venue's actual gigs off
+                  the screen. `key` resets it per venue so selecting a new pin
+                  does not silently reveal a different venue's reviews.
+                  The reviews arrive in the same request as the rating, so
+                  hiding them costs nothing and saves nothing. */}
               {data.reviews.length > 0 && (
-                <ul className="mt-2.5 space-y-2.5">
-                  {data.reviews.map((r, i) => (
-                    <li key={i} className="border-line bg-bg rounded-xl border p-3">
-                      <div className="flex items-center gap-2">
-                        <Stars rating={r.rating} />
-                        <span className="text-soft text-[13px]">{r.when}</span>
-                      </div>
-                      <p className="mt-1.5 line-clamp-4 text-sm">{r.text}</p>
-                      <p className="text-soft mt-1.5 text-[13px] font-semibold">
-                        {r.authorUri ? (
-                          <a href={r.authorUri} target="_blank" rel="noopener noreferrer">
-                            {r.author}
-                          </a>
-                        ) : (
-                          r.author
-                        )}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <details key={venue.id} className="group mt-2.5">
+                  <summary className="text-soft flex cursor-pointer list-none items-center gap-1 text-[13px] font-bold [&::-webkit-details-marker]:hidden">
+                    <Icon
+                      name="go"
+                      className="size-4 rotate-90 transition-transform group-open:-rotate-90"
+                    />
+                    <span className="group-open:hidden">
+                      Read {data.reviews.length} {data.reviews.length === 1 ? "review" : "reviews"}
+                    </span>
+                    <span className="hidden group-open:inline">Hide reviews</span>
+                  </summary>
+
+                  <ul className="mt-2.5 space-y-2.5">
+                    {data.reviews.map((r, i) => (
+                      <li key={i} className="border-line bg-bg rounded-xl border p-3">
+                        <div className="flex items-center gap-2">
+                          <Stars rating={r.rating} />
+                          <span className="text-soft text-[13px]">{r.when}</span>
+                        </div>
+                        <p className="mt-1.5 line-clamp-4 text-sm">{r.text}</p>
+                        <p className="text-soft mt-1.5 text-[13px] font-semibold">
+                          {r.authorUri ? (
+                            <a href={r.authorUri} target="_blank" rel="noopener noreferrer">
+                              {r.author}
+                            </a>
+                          ) : (
+                            r.author
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </>
           )}
