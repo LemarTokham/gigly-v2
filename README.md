@@ -114,6 +114,24 @@ from it.
 Session checks use `getUser()`, never `getSession()`. `getSession()` trusts the
 cookie as it stands; `getUser()` revalidates it against the auth server.
 
+The OAuth callback returns to **the host the person started on**, not a
+configured one. PKCE stores a code verifier in a cookie before handing off to
+the provider, and cookies are per-origin: beginning at `localhost:3000` and
+returning to `192.168.1.252:3000` means the verifier never comes back and the
+exchange fails with "code verifier not found". Same machine, different origin.
+The request host is only trusted when it matches `NEXT_PUBLIC_SITE_URL` or is
+a local/private address, so a forged Host header cannot redirect a sign-in.
+
+A consequence worth knowing: signing in at `localhost:3000` does not sign you
+in at the LAN address, because they are separate origins with separate
+cookies. Pick one and stay on it.
+
+Google sign-in **from a phone** additionally needs Supabase's own callback to
+be reachable from the phone. By default it is `http://127.0.0.1:54321/auth/v1/callback`,
+which on a phone means the phone. Set `api_url` in `config.toml` to the LAN
+address and register that callback in the Google console, or just use a magic
+link on the phone — that flow has no provider redirect.
+
 ## Submitting a gig
 
 Submissions go through `submit_gig()`, one security definer function, rather
