@@ -38,6 +38,7 @@ nothing to your hosted project.
 | `pnpm make:admin you@example.com` | grant the approval queue |
 | `pnpm venues:locate --write` | refresh venue coordinates and place ids |
 | `pnpm venues:skiddle --write` | map venues to Skiddle venue ids |
+| `pnpm venues:load --write` | the real venues and nothing else — for the hosted project |
 | `pnpm run import --write` | run every registered import source |
 | `pnpm db:clear-demo` | drop the invented sample data locally |
 | `pnpm dev:lan` | serve on the LAN address so a phone can use it |
@@ -230,6 +231,25 @@ time read as London local.
 
 After a `db:reset` the admin flag goes with `auth.users`. Sign in again, then
 `pnpm make:admin` — it reads `ADMIN_EMAIL` from `apps/web/.env.local` if you set one.
+
+### The live site
+
+The hosted database gets migrations from `pnpm db:push` and nothing else, so
+it starts with no venues, and the importer can only attach listings to a venue
+that exists. The scripts read whichever env file they are given; pointing them
+at `apps/web/.env.production.local` points them at the live database:
+
+```sh
+node --env-file=apps/web/.env.production.local scripts/load-venues.mjs --write
+node --env-file=apps/web/.env.local --env-file=apps/web/.env.production.local \
+  scripts/import/run.mjs --write
+node --env-file=apps/web/.env.production.local scripts/make-admin.mjs you@example.com
+```
+
+The import takes two files because `SKIDDLE_API_KEY` lives only in
+`.env.local`. Node lets a later `--env-file` override an earlier one, so the
+Supabase URL and key come from production. Drop `--write` for a dry run first.
+Everything lands pending; approve it at `/admin` on the live site.
 
 ### Sample data
 
