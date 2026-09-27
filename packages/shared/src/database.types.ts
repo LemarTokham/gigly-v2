@@ -91,6 +91,13 @@ export type Database = {
             foreignKeyName: "artists_claimed_by_fkey"
             columns: ["claimed_by"]
             isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "artists_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -138,6 +145,60 @@ export type Database = {
             foreignKeyName: "attending_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "attending_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -184,6 +245,69 @@ export type Database = {
           {
             foreignKeyName: "follows_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          addressee_id: string
+          cancelled_at: string | null
+          created_at: string
+          requester_id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["friendship_status"]
+        }
+        Insert: {
+          addressee_id: string
+          cancelled_at?: string | null
+          created_at?: string
+          requester_id: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["friendship_status"]
+        }
+        Update: {
+          addressee_id?: string
+          cancelled_at?: string | null
+          created_at?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["friendship_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -251,6 +375,46 @@ export type Database = {
           },
         ]
       }
+      gig_moments: {
+        Row: {
+          fires_at: string
+          gig_id: string
+          notified_at: string | null
+        }
+        Insert: {
+          fires_at: string
+          gig_id: string
+          notified_at?: string | null
+        }
+        Update: {
+          fires_at?: string
+          gig_id?: string
+          notified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gig_moments_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: true
+            referencedRelation: "artist_chart"
+            referencedColumns: ["next_gig_id"]
+          },
+          {
+            foreignKeyName: "gig_moments_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: true
+            referencedRelation: "gig_stats"
+            referencedColumns: ["gig_id"]
+          },
+          {
+            foreignKeyName: "gig_moments_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: true
+            referencedRelation: "gigs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gigs: {
         Row: {
           created_at: string
@@ -304,6 +468,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "gigs_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "gigs_submitted_by_fkey"
             columns: ["submitted_by"]
@@ -362,6 +533,13 @@ export type Database = {
             foreignKeyName: "hypes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "hypes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -369,24 +547,300 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
           is_admin: boolean
+          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id: string
           is_admin?: boolean
+          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           is_admin?: boolean
+          username?: string | null
         }
         Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reactions: {
+        Row: {
+          created_at: string
+          reaction: Database["public"]["Enums"]["reaction_code"]
+          stub_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reaction: Database["public"]["Enums"]["reaction_code"]
+          stub_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reaction?: Database["public"]["Enums"]["reaction_code"]
+          stub_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reactions_stub_id_fkey"
+            columns: ["stub_id"]
+            isOneToOne: false
+            referencedRelation: "stubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          stub_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          stub_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reported_user_id?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          stub_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reported_user_id_fkey"
+            columns: ["reported_user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reports_reported_user_id_fkey"
+            columns: ["reported_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_stub_id_fkey"
+            columns: ["stub_id"]
+            isOneToOne: false
+            referencedRelation: "stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stubs: {
+        Row: {
+          audience: Database["public"]["Enums"]["stub_audience"]
+          back_path: string
+          created_at: string
+          front_path: string
+          gig_id: string
+          id: string
+          people: number
+          thumb_path: string
+          user_id: string
+        }
+        Insert: {
+          audience: Database["public"]["Enums"]["stub_audience"]
+          back_path: string
+          created_at?: string
+          front_path: string
+          gig_id: string
+          id?: string
+          people: number
+          thumb_path: string
+          user_id: string
+        }
+        Update: {
+          audience?: Database["public"]["Enums"]["stub_audience"]
+          back_path?: string
+          created_at?: string
+          front_path?: string
+          gig_id?: string
+          id?: string
+          people?: number
+          thumb_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stubs_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "artist_chart"
+            referencedColumns: ["next_gig_id"]
+          },
+          {
+            foreignKeyName: "stubs_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gig_stats"
+            referencedColumns: ["gig_id"]
+          },
+          {
+            foreignKeyName: "stubs_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gigs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stubs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "stubs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      username_holds: {
+        Row: {
+          held_until: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          held_until: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          held_until?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "username_holds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "friend_links"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "username_holds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       venues: {
         Row: {
@@ -466,6 +920,17 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_links: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          since: string | null
+          state: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
       gig_stats: {
         Row: {
           attending_count: number | null
@@ -475,7 +940,12 @@ export type Database = {
       }
     }
     Functions: {
+      are_friends: { Args: { a: string; b: string }; Returns: boolean }
       artist_is_hypeable: { Args: { p_artist_id: string }; Returns: boolean }
+      can_post_stub: { Args: { p_gig_id: string }; Returns: boolean }
+      can_read_stub_photo: { Args: { p_name: string }; Returns: boolean }
+      can_upload_stub_photo: { Args: { p_name: string }; Returns: boolean }
+      cancel_request: { Args: { p_to: string }; Returns: undefined }
       cast_hype: {
         Args: { p_artist_id: string }
         Returns: {
@@ -517,7 +987,36 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_blocked_between: { Args: { a: string; b: string }; Returns: boolean }
+      lock_pair: { Args: { a: string; b: string }; Returns: undefined }
+      profile_counts: {
+        Args: { p_user_id: string }
+        Returns: {
+          friends: number
+          going: number
+          stubs: number
+        }[]
+      }
+      react: {
+        Args: {
+          p_reaction: Database["public"]["Enums"]["reaction_code"]
+          p_stub_id: string
+        }
+        Returns: Database["public"]["Enums"]["reaction_code"]
+      }
+      register_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
+      remove_friend: { Args: { p_other: string }; Returns: undefined }
+      respond_to_request: {
+        Args: { p_accept: boolean; p_from: string }
+        Returns: string
+      }
+      send_friend_request: { Args: { p_to: string }; Returns: string }
+      set_username: { Args: { p_username: string }; Returns: string }
       slugify: { Args: { p_text: string }; Returns: string }
+      stub_window_open: { Args: { p_gig_id: string }; Returns: boolean }
       submit_gig: {
         Args: {
           p_artist_name: string
@@ -554,8 +1053,11 @@ export type Database = {
       take_back_hype: { Args: { p_artist_id: string }; Returns: undefined }
       unique_artist_slug: { Args: { p_base: string }; Returns: string }
       unique_gig_slug: { Args: { p_base: string }; Returns: string }
+      unregister_push_token: { Args: { p_token: string }; Returns: undefined }
+      username_is_reserved: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {
+      friendship_status: "pending" | "accepted" | "declined"
       genre_group:
         | "Indie"
         | "Punk"
@@ -566,6 +1068,15 @@ export type Database = {
         | "Hip hop"
       gig_status: "pending" | "live" | "rejected"
       import_outcome: "created" | "updated" | "duplicate"
+      reaction_code: "fire" | "hands" | "heart_eyes" | "laugh" | "horns"
+      report_reason:
+        | "nudity"
+        | "violence"
+        | "harassment"
+        | "spam"
+        | "not_at_gig"
+        | "other"
+      stub_audience: "friends" | "wall"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -696,6 +1207,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      friendship_status: ["pending", "accepted", "declined"],
       genre_group: [
         "Indie",
         "Punk",
@@ -707,6 +1219,16 @@ export const Constants = {
       ],
       gig_status: ["pending", "live", "rejected"],
       import_outcome: ["created", "updated", "duplicate"],
+      reaction_code: ["fire", "hands", "heart_eyes", "laugh", "horns"],
+      report_reason: [
+        "nudity",
+        "violence",
+        "harassment",
+        "spam",
+        "not_at_gig",
+        "other",
+      ],
+      stub_audience: ["friends", "wall"],
     },
   },
 } as const

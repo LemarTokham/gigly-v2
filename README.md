@@ -29,7 +29,7 @@ nothing to your hosted project.
 | --- | --- |
 | `pnpm dev` / `build` / `start` | the website |
 | `pnpm lint` / `typecheck` | every workspace, plus the root scripts and tests |
-| `pnpm test` | hype rules, social, submission, dates, usernames |
+| `pnpm test` | hype rules, friends, stubs, reactions, photos, submission, dates |
 | `pnpm db:start` / `db:stop` | local Supabase stack |
 | `pnpm db:reset` | drop, replay all migrations, reseed |
 | `pnpm db:types` | regenerate `packages/shared/src/database.types.ts` |
@@ -108,6 +108,61 @@ Error codes the UI branches on:
 | `GY002` | already hyping this artist, still inside the 7 day window |
 | `GY003` | artist has no upcoming live gig |
 | `GY004` | no hype to take back |
+
+## Friends, stubs and reactions
+
+Enforced in the database, like the hype rules: the apps only decide what to
+show. `tests/` has a file per area, and they build their own users, venue and
+gigs through `tests/support.mts` instead of leaning on the seed, so they do
+not rot a week after a reset the way the seed-based hype tests do.
+
+- **Usernames** are set only through `set_username()`. It enforces the same
+  format as `packages/shared`, refuses reserved names as "taken", and holds a
+  changed-away-from handle for its old owner for 30 days, so nobody can take it
+  and pass as them. `username` is empty until picked: sign-in creates the
+  account before any form. Profiles are readable by everyone, signed in or
+  not, but `is_admin` is column-private, so `select=*` on `profiles` is
+  refused. Name the columns.
+- **Friendships** change only through `send_friend_request`,
+  `respond_to_request`, `cancel_request` and `remove_friend`, and are read
+  through the `friend_links` view. The table is closed because the rules are
+  transitions a row policy cannot see. Crossing requests become friends. A
+  decline is silent: the sender keeps seeing "sent", and cannot reach the
+  other person again for 30 days, cancelling or not. Fifty requests a day.
+- **Blocking** hides the pair from each other everywhere (profiles, stubs,
+  reactions, photos), ends any friendship, and answers a friend request with
+  the same code as a person who does not exist.
+- **The gig moment** is picked by trigger when a gig goes live or its time
+  changes: doors +60 to +150 minutes. It is not re-rolled when the importer
+  re-saves the same time, never moves once its push has gone, and is
+  unreadable until it fires.
+- **A stub** can be posted by someone with a username who is going, from the
+  moment until doors +6 hours, once per gig. Its photo paths must sit in the
+  poster's own `{user}/{gig}/` folder, the posting time is the server's, and
+  it can never be edited. Owners, accepted friends, and, for `wall` stubs,
+  anyone can see it.
+- **Photos** live in the private `stubs` bucket, created by migration so it
+  exists on the hosted project too. Uploads pass only when the stub could be
+  posted, and a signed URL can only be made by someone who can see the stub.
+- **Reactions** are stored as codes (`fire`, `hands`, `heart_eyes`, `laugh`,
+  `horns`) and set with `react()`: new adds, different swaps, same removes.
+  Only on stubs you can see, never your own. `packages/shared` fails to
+  compile if its list and the database's drift apart.
+- **Reports** can be filed about anything you can see and read only by admins.
+  **Push tokens** are keyed on the token, so a phone that changes account
+  stops receiving the old account's pushes.
+
+| code | meaning |
+| --- | --- |
+| `GY010` | not a valid username |
+| `GY011` | username taken |
+| `GY020` | you cannot add yourself |
+| `GY021` | no such person (also what a blocked pair gets) |
+| `GY022` | already friends |
+| `GY023` | too many friend requests today |
+| `GY024` | no request to answer or cancel |
+| `GY025` | not friends |
+| `GY026` | pick a username first |
 
 ## Auth
 
