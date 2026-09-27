@@ -52,6 +52,11 @@ export function HypeButton({
 
       if (!result.ok) {
         setOn(!next);
+        // No username yet: picking one is the way forward, not an error.
+        if (result.code === "GY026") {
+          router.push(`/welcome?next=${encodeURIComponent(path)}`);
+          return;
+        }
         toast(result.message);
         return;
       }

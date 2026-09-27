@@ -90,6 +90,13 @@ describe("the three-a-week allowance", () => {
     assert.equal(await remaining(me.db), 0);
   });
 
+  test("a username is needed before backing anything", async () => {
+    const me = await f.user({ username: false });
+    const show = await f.upcoming();
+    assert.equal(code((await me.db.rpc("cast_hype", { p_gig_id: show })).error), "GY026");
+    assert.equal(await remaining(me.db), 3, "and trying costs nothing");
+  });
+
   test("signed out, nothing can be hyped", async () => {
     const show = await f.upcoming();
     assert.ok((await anon().rpc("cast_hype", { p_gig_id: show })).error);

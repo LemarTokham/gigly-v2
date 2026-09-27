@@ -481,6 +481,30 @@ export async function getMyHypes(): Promise<GigRow[]> {
   return (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
 }
 
+export type MyProfile = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+/** The signed-in user's own profile, or null when signed out. */
+export async function getMyProfile(): Promise<MyProfile | null> {
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return null;
+
+  // Named columns: is_admin is column-private, so select=* is refused.
+  const { data } = await db
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+  return data ?? { id: user.id, username: null, display_name: null, avatar_url: null };
+}
+
 /** Whether the signed-in user can reach the approval queue. */
 export async function isAdminUser(): Promise<boolean> {
   const db = await createClient();

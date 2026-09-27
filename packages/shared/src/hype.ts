@@ -17,6 +17,7 @@ export const HYPE_ERRORS: Readonly<Record<string, string>> = {
   GY003: "This show isn't taking hypes. They close when doors open.",
   GY004: "You weren't backing this show.",
   GY005: "Doors are open, so that hype's been spent.",
+  GY026: "Pick a username first.",
   "28000": "Sign in to back a show.",
 };
 

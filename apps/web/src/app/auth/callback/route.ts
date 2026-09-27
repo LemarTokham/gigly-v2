@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { afterSignIn } from "@/lib/after-sign-in";
 
 /** OAuth lands here: swap the one-time code for a session. */
 export async function GET(request: NextRequest) {
@@ -21,5 +22,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/signin?error=${encodeURIComponent(error.message)}`);
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  return NextResponse.redirect(`${origin}${await afterSignIn(db, safeNext)}`);
 }

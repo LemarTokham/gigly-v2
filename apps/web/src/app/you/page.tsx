@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HYPES_PER_WEEK } from "@gigly/shared";
 import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
+import { Avatar } from "@/components/avatar";
 import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { signOut } from "@/lib/actions/auth";
@@ -12,6 +13,7 @@ import {
   getMyFollowing,
   getMyGoing,
   getMyHypes,
+  getMyProfile,
   getUser,
   isAdminUser,
 } from "@/lib/queries";
@@ -28,7 +30,7 @@ export default async function YouPage() {
       <>
         <TopBar />
         <div className="border-line text-soft mt-4 rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
-          <p>Sign in to back artists and keep track of what you&rsquo;re going to.</p>
+          <p>Sign in to back shows and keep track of what you&rsquo;re going to.</p>
           <Link
             href="/signin?next=%2Fyou"
             className="bg-ink text-bg border-ink mt-3 inline-flex items-center justify-center rounded-xl border-2 px-4 py-2.5 text-sm font-bold"
@@ -40,7 +42,8 @@ export default async function YouPage() {
     );
   }
 
-  const [following, going, backing, hype, admin] = await Promise.all([
+  const [profile, following, going, backing, hype, admin] = await Promise.all([
+    getMyProfile(),
     getMyFollowing(),
     getMyGoing(),
     getMyHypes(),
@@ -53,7 +56,38 @@ export default async function YouPage() {
     <>
       <TopBar signedIn hypesLeft={hype.left} />
 
-      <div className="border-line bg-card mt-1.5 flex items-center gap-4 rounded-2xl border p-4">
+      {profile?.username ? (
+        <div className="mt-1.5 flex items-center gap-3.5">
+          <Avatar name={profile.display_name ?? profile.username} size="lg" />
+          <span className="min-w-0 flex-1">
+            <b className="font-display block text-[22px] leading-[1.1] font-normal [overflow-wrap:anywhere]">
+              {profile.display_name ?? "You"}
+            </b>
+            <span className="text-soft mt-0.5 block text-sm font-semibold">@{profile.username}</span>
+          </span>
+          <Link
+            href="/you/edit"
+            className="border-line inline-flex items-center rounded-xl border-2 px-3 py-1.5 text-sm font-bold"
+          >
+            Edit
+          </Link>
+        </div>
+      ) : (
+        <Link
+          href="/welcome?next=%2Fyou"
+          className="bg-ink text-bg mt-1.5 flex w-full items-center gap-3 rounded-2xl px-3.5 py-3"
+        >
+          <span>
+            <b className="block text-base leading-tight font-bold">Pick a username</b>
+            <i className="block text-[13px] not-italic opacity-75">
+              It&rsquo;s how friends find you, and you need one to hype a show
+            </i>
+          </span>
+          <Icon name="go" className="ml-auto" />
+        </Link>
+      )}
+
+      <div className="border-line bg-card mt-3.5 flex items-center gap-4 rounded-2xl border p-4">
         <span className="flex gap-1" role="img" aria-label={`${hype.left} of ${HYPES_PER_WEEK} hypes left`}>
           {Array.from({ length: HYPES_PER_WEEK }, (_, i) => (
             <Icon

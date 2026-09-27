@@ -55,3 +55,18 @@ export function validateUsername(input: string): UsernameCheck {
   }
   return { ok: true, username };
 }
+
+/**
+ * set_username()'s error codes in the same words as validateUsername, so a
+ * name the database refuses reads the same as one refused before sending.
+ */
+export function usernameErrorMessage(code: string | undefined, username: string): string {
+  if (code === "GY011") return `@${normaliseUsername(username)} is taken. Try another.`;
+  if (code === "GY010") {
+    const check = validateUsername(username);
+    return check.ok
+      ? "Usernames are 3 to 20 characters: letters, numbers, dots and underscores."
+      : check.message;
+  }
+  return "That didn't save. Try again.";
+}

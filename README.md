@@ -171,7 +171,7 @@ not rot a week after a reset the way the seed-based hype tests do.
 | `GY023` | too many friend requests today |
 | `GY024` | no request to answer or cancel |
 | `GY025` | not friends |
-| `GY026` | pick a username first |
+| `GY026` | pick a username first (friend requests and hyping) |
 
 ## Auth
 
@@ -183,7 +183,21 @@ signed out an hour later.
 Magic links use a custom email template pointing at `/auth/confirm` with a
 token hash. Supabase's default link returns tokens in a URL fragment, which the
 server never receives, so a server-rendered app cannot establish a session
-from it.
+from it. The link is built from the site URL, so it also carries
+`redirect_to` (the address `sendMagicLink` asked for), and `/auth/confirm`
+takes only the `next` path out of it, never its host. Without that, every
+magic-link sign-in landed on the home page, wherever it started. Supabase only
+honours a `redirect_to` on its Redirect URLs list, so the site's address has
+to be on it.
+
+**Usernames at sign-up.** Signing in creates the account before any form can
+be shown, so the first sign-in goes to `/welcome`, "Pick a username", and on to
+where the person was heading. Anyone signed in without one (web users from
+before usernames) is sent there when they hype, and prompted on You. Hyping
+needs a username in the database too (`GY026`): signing in alone costs nothing
+per account, and a username ties every hype to a findable @handle. Names are
+edited at `/you/edit`. Every `next` redirect goes through `safeNext()`, so it
+only ever points at a page on this site.
 
 Session checks use `getUser()`, never `getSession()`. `getSession()` trusts the
 cookie as it stands; `getUser()` revalidates it against the auth server.

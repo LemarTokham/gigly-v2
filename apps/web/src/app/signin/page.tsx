@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/safe-next";
 import { Icon } from "@/components/icon";
 import { sendMagicLink, signInWithGoogle } from "@/lib/actions/auth";
 import { getUser } from "@/lib/queries";
@@ -12,9 +13,11 @@ export default async function SignIn({
   searchParams: Promise<{ next?: string; error?: string; sent?: string }>;
 }) {
   const sp = await searchParams;
-  if (await getUser()) redirect(sp.next ?? "/");
+  // Already signed in: on to where they were going, but only ever on this
+  // site. Unchecked, ?next=//elsewhere.example made this an open redirect.
+  if (await getUser()) redirect(safeNext(sp.next));
 
-  const next = sp.next?.startsWith("/") && !sp.next.startsWith("//") ? sp.next : "/";
+  const next = safeNext(sp.next);
 
   return (
     <div className="pt-6 pb-8">
