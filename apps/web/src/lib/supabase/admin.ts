@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
+import type { Database } from "@gigly/shared";
 
 /**
  * Service-role client. Bypasses RLS entirely, so it never goes near a request

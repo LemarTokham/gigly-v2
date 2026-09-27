@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    // Node runs these files by stripping types, which only works for syntax
+    // that erases cleanly: no enums, no namespaces, no parameter properties.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "tests"]
+}

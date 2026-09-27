@@ -3,13 +3,14 @@
  * constraints, real JWTs. Mocking the Supabase client here would test the mock:
  * every rule below lives in the database, not in TypeScript.
  *
- *   npm run db:start   (once)
- *   npm test
+ *   pnpm db:start   (once)
+ *   ppnpm test
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { HYPES_PER_WEEK } from "../packages/shared/src/hype.ts";
 
 // ---------------------------------------------------------------- bootstrap
 
@@ -179,6 +180,11 @@ after(async () => {
 // ------------------------------------------------------------- allowance
 
 describe("the three-a-week allowance", () => {
+  test("the web and the app are told the same allowance the database enforces", async () => {
+    const { db } = await newUser();
+    assert.equal((await db.rpc("hypes_remaining")).data, HYPES_PER_WEEK);
+  });
+
   test("three hypes are allowed and the fourth is refused", async () => {
     const { db } = await newUser();
     const slugs = ["dock-leaf", "marzipan-riot", "velvet-ferry", "low-tide-club"];

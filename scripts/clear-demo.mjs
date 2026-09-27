@@ -2,9 +2,9 @@
  * Removes the invented sample data, leaving the real venues and anything
  * imported or submitted.
  *
- *   npm run db:clear-demo
+ *   pnpm db:clear-demo
  *
- * The seed is still what `npm run db:reset` loads and what the tests run
+ * The seed is still what `pnpm db:reset` loads and what the tests run
  * against — this is for when you want to look at real listings without
  * "Dock Leaf" sitting next to them. Run db:reset to get it back.
  */
@@ -48,4 +48,4 @@ for (let page = 1; ; page++) {
 console.log(`removed ${removed} seed users and their hypes`);
 
 const { count } = await db.from("gigs").select("*", { count: "exact", head: true });
-console.log(`\n${count ?? 0} gigs left. npm run db:reset puts the sample data back.`);
+console.log(`\n${count ?? 0} gigs left. pnpm db:reset puts the sample data back.`);

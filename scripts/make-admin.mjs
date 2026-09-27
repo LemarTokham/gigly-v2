@@ -1,8 +1,8 @@
 /**
  * Grants or revokes the admin flag, which is what gates /admin.
  *
- *   npm run make:admin -- you@example.com
- *   npm run make:admin -- you@example.com --revoke
+ *   pnpm make:admin you@example.com
+ *   pnpm make:admin you@example.com --revoke
  *
  * is_admin is not writable by its owner (see the profiles column grants), so
  * this runs as the service role.
@@ -15,7 +15,7 @@ const revoke = process.argv.includes("--revoke");
 const email = process.argv.find((a) => a.includes("@")) ?? process.env.ADMIN_EMAIL;
 
 if (!email) {
-  console.error("Usage: npm run make:admin -- you@example.com [--revoke]");
+  console.error("Usage: pnpm make:admin you@example.com [--revoke]");
   console.error("Or set ADMIN_EMAIL in .env.local and run it with no argument.");
   process.exit(1);
 }

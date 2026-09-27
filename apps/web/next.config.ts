@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Shipped as TypeScript source with no build step of its own.
+  transpilePackages: ["@gigly/shared"],
   images: {
     // Skiddle serve event artwork and artist photos from these CloudFront
     // buckets. They are referenced, not copied: the images belong to the

@@ -1,4 +1,4 @@
-@AGENTS.md
+@apps/web/AGENTS.md
 # Gigly
 Next.js + Expo monorepo, Supabase backend.
 Product spec: @docs/spec.md

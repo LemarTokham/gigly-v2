@@ -4,7 +4,7 @@
  * Run: node scripts/generate-seed.mjs
  *
  * Gig times are emitted as offsets from the date the seed runs, not fixed
- * dates, so `npm run db:reset` always produces a listing with gigs still to
+ * dates, so `pnpm db:reset` always produces a listing with gigs still to
  * come. Without that the seed rots and the chart empties out after a week.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -16,7 +16,7 @@ const root = join(here, "..");
 const data = JSON.parse(readFileSync(join(here, "prototype-data.json"), "utf8"));
 
 // Coordinates and Google place ids, captured once by scripts/locate-venues.mjs
-// and baked in here so `npm run db:reset` restores a working map instead of
+// and baked in here so `pnpm db:reset` restores a working map instead of
 // silently wiping the pins. Re-run that script to refresh this file.
 const locations = JSON.parse(readFileSync(join(here, "venue-locations.json"), "utf8"));
 

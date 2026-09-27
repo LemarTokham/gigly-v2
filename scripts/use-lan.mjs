@@ -2,7 +2,7 @@
  * Points the dev setup at this machine's LAN address so a phone on the same
  * network can use it.
  *
- *   npm run dev:lan
+ *   pnpm dev:lan
  *
  * 127.0.0.1 in NEXT_PUBLIC_SUPABASE_URL is baked into the JavaScript sent to
  * the browser, and on a phone that means the phone itself — so the page loads
@@ -24,7 +24,7 @@ if (!lan) {
 }
 
 // --- .env.local: only the two URLs, everything else left alone -------------
-const envPath = ".env.local";
+const envPath = "apps/web/.env.local";
 let env = readFileSync(envPath, "utf8");
 const before = env;
 
@@ -55,7 +55,7 @@ console.log(`\nLAN address: ${lan}\n`);
 console.log(`  On your phone:  http://${lan}:3000`);
 console.log(`  Supabase:       http://${lan}:54321`);
 if (tomlChanged) {
-  console.log(`\nAuth redirects changed, so restart the stack:\n  npm run db:stop && npm run db:start`);
+  console.log(`\nAuth redirects changed, so restart the stack:\n  pnpm db:stop && pnpm db:start`);
 }
 console.log(
   `\nGoogle Maps will refuse to draw until you add this to the key's\n` +

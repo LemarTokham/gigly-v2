@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { HYPES_PER_WEEK } from "@gigly/shared";
 import { Icon } from "@/components/icon";
 
 /**
  * Hype pips show the full three until step 4 reads the real allowance.
  */
 export function TopBar({
-  hypesLeft = 3,
+  hypesLeft = HYPES_PER_WEEK,
   signedIn = false,
 }: {
   hypesLeft?: number;
@@ -33,9 +34,9 @@ export function TopBar({
         {signedIn ? (
           <span
             className="border-line bg-card flex items-center gap-0.5 rounded-full border px-2.5 py-[7px]"
-            aria-label={`${hypesLeft} of 3 hypes left`}
+            aria-label={`${hypesLeft} of ${HYPES_PER_WEEK} hypes left`}
           >
-            {[0, 1, 2].map((i) => (
+            {Array.from({ length: HYPES_PER_WEEK }, (_, i) => (
               <Icon key={i} name="flame" className={i < hypesLeft ? "text-hype" : "text-line"} />
             ))}
           </span>

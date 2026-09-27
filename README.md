@@ -10,33 +10,40 @@ not edited.
 
 ## Running it
 
-Needs Docker Desktop for the local Supabase stack.
+Needs Docker Desktop for the local Supabase stack, and pnpm. pnpm's version is
+pinned in `package.json`; corepack, which ships with Node, fetches it.
 
 ```sh
-npm install
-npm run db:start     # first run pulls ~10 images, takes a while
-npm run dev
+corepack enable pnpm   # once per machine
+pnpm install
+pnpm db:start          # first run pulls ~10 images, takes a while
+pnpm dev
 ```
 
-`npm run db:start` prints a local Studio URL and a mail inbox URL, and writes
+`pnpm db:start` prints a local Studio URL and a mail inbox URL, and writes
 nothing to your hosted project.
 
 ### Scripts
 
 | script | does |
 | --- | --- |
-| `npm run db:start` / `db:stop` | local Supabase stack |
-| `npm run db:reset` | drop, replay all migrations, reseed |
-| `npm run db:types` | regenerate `src/lib/database.types.ts` |
-| `npm run db:push` | apply migrations to the hosted project |
-| `npm run seed:hypes` | synthetic users + hypes so the chart has data |
-| `npm run make:admin -- you@example.com` | grant the approval queue |
-| `npm run venues:locate -- --write` | refresh venue coordinates and place ids |
-| `npm run venues:skiddle -- --write` | map venues to Skiddle venue ids |
-| `npm run import -- --write` | run every registered import source |
-| `npm run db:clear-demo` | drop the invented sample data locally |
-| `npm run dev:lan` | serve on the LAN address so a phone can use it |
-| `npm test` | hype rules, social, submission, dates |
+| `pnpm dev` / `build` / `start` | the website |
+| `pnpm lint` / `typecheck` | every workspace, plus the root scripts and tests |
+| `pnpm test` | hype rules, social, submission, dates, usernames |
+| `pnpm db:start` / `db:stop` | local Supabase stack |
+| `pnpm db:reset` | drop, replay all migrations, reseed |
+| `pnpm db:types` | regenerate `packages/shared/src/database.types.ts` |
+| `pnpm db:push` | apply migrations to the hosted project |
+| `pnpm seed:hypes` | synthetic users + hypes so the chart has data |
+| `pnpm make:admin you@example.com` | grant the approval queue |
+| `pnpm venues:locate --write` | refresh venue coordinates and place ids |
+| `pnpm venues:skiddle --write` | map venues to Skiddle venue ids |
+| `pnpm run import --write` | run every registered import source |
+| `pnpm db:clear-demo` | drop the invented sample data locally |
+| `pnpm dev:lan` | serve on the LAN address so a phone can use it |
+
+`pnpm run import` needs the `run`: `pnpm import` on its own is pnpm's built-in
+lockfile converter.
 
 `scripts/supabase.sh` wraps the CLI so it finds Docker Desktop's binary and
 socket under `$HOME` without anything being added to your shell profile.
@@ -45,20 +52,22 @@ socket under `$HOME` without anything being added to your shell profile.
 
 Two env files, read by two different programs:
 
-- **`.env.local`** — Next.js. Supabase URL and keys.
+- **`apps/web/.env.local`** — Next.js, which reads env files from its own
+  folder. Supabase URL and keys. The scripts in `scripts/` read it too.
 - **`.env`** — the Supabase CLI. OAuth provider credentials referenced from
   `config.toml` as `env(...)`, currently
   `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `..._SECRET`.
 
-`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` goes in `.env.local`. It reaches the browser
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` goes in `apps/web/.env.local`. It reaches the browser
 by design — the Maps JavaScript API runs client-side — so an HTTP referrer
 restriction on the key is the actual protection, not secrecy.
 `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` is optional and falls back to Google's demo
 id; create your own before deploying.
 
-Both are gitignored. `.env.local` points at the local stack and holds no secrets — those
+`apps/web/.env.local` points at the local stack and holds no secrets — those
 credentials are the same on every local install. Hosted project keys live in
-`.env.production.local`, and go into Vercel at deploy time. Both are gitignored.
+`apps/web/.env.production.local`, and go into Vercel at deploy time. All three
+files are gitignored.
 
 ## The hype rules
 
@@ -163,7 +172,7 @@ written to our database. The map therefore draws from our own rows with no
 Places call on page load; a request is only spent when someone opens a venue.
 
 Coordinates are baked into `supabase/seed.sql` so `db:reset` restores a working
-map. `npm run venues:locate` refreshes them. Two of the eight venues are
+map. `pnpm venues:locate` refreshes them. Two of the eight venues are
 street-level rather than exact, because OpenStreetMap has no entry for the room
 itself — the script reports which, and rejects any match more than 8km from the
 city centre, since "Quarry" otherwise matches a road in Woolton.
@@ -189,11 +198,11 @@ and four venues have no website at all. One feed beats eight scrapers.
 Skiddle's API is documented as **non-commercial use only**. Fine for a project;
 anything that takes money needs an agreement with them.
 
-`SKIDDLE_API_KEY` goes in `.env.local` with no `NEXT_PUBLIC_` prefix — unlike
+`SKIDDLE_API_KEY` goes in `apps/web/.env.local` with no `NEXT_PUBLIC_` prefix — unlike
 the Maps key it is a real secret and only ever runs in the import script.
 
-Run `npm run venues:skiddle -- --write` once to map venues to Skiddle ids,
-then `npm run import -- --write`. Venue matches are verified by name, because
+Run `pnpm venues:skiddle --write` once to map venues to Skiddle ids,
+then `pnpm run import --write`. Venue matches are verified by name, because
 a near-miss would quietly attach another room's listings to ours. Those ids
 are baked into the seed alongside the coordinates, so `db:reset` does not
 quietly break the importer.
@@ -220,15 +229,19 @@ in British Summer Time, so the instant is built from the date plus the door
 time read as London local.
 
 After a `db:reset` the admin flag goes with `auth.users`. Sign in again, then
-`npm run make:admin` — it reads `ADMIN_EMAIL` from `.env.local` if you set one.
+`pnpm make:admin` — it reads `ADMIN_EMAIL` from `apps/web/.env.local` if you set one.
 
 ### Sample data
 
-The seed is invented, and `npm run db:reset` is what loads it. It never
+The seed is invented, and `pnpm db:reset` is what loads it. It never
 reaches the hosted project — `db push` applies migrations only — and the test
 suite depends on it, so it stays. Seeded gigs carry `source = 'seed'`, and
-`npm run db:clear-demo` removes them locally when you want to look at real
+`pnpm db:clear-demo` removes them locally when you want to look at real
 listings without "Dock Leaf" next to them.
+
+Seeded gig times are offsets from the day the seed ran, so the local seed goes
+stale. About a week after a reset the seeded bands' gigs have all happened, and
+the hype tests that need an upcoming gig fail until the next `pnpm db:reset`.
 
 `scripts/import/polite.mjs` identifies as GiglyBot with a contact URL, obeys
 robots.txt for **that** name, and waits a second between requests to a host.
@@ -251,12 +264,41 @@ opens the full page with its Open Graph tags rather than a modal over nothing.
 ## Layout
 
 ```
+apps/web/              the website (Next.js)
+  src/lib/supabase/    browser, server and service-role clients
+  tests/               date handling
+packages/shared/       @gigly/shared: generated database types, hype numbers
+                       and messages, username rules, the five reactions
 supabase/migrations/   schema, policies, functions, views
 supabase/seed.sql      GENERATED — run scripts/generate-seed.mjs
-scripts/               seed generation, prototype data extraction, CLI wrapper
-src/lib/supabase/      browser, server and service-role clients
-tests/                 hype rules
+scripts/               seed generation, importers, admin, CLI wrapper
+tests/                 the database rules, against the local stack
 ```
+
+The native app will be `apps/mobile`. `supabase/`, `scripts/` and `tests/` stay
+at the root because they belong to the backend both apps share, not to either
+app.
+
+### Why pnpm
+
+The website and the Expo app will want different versions of the same
+packages — React Native pins its own React. pnpm gives each app its own copy
+instead of hoisting one to the top, where the other app would silently pick it
+up. It is strict in the other direction too: a package can only import what its
+own `package.json` declares. Moving over caught one example —
+`@types/google.maps` only ever reached the map code because npm happened to
+hoist it from `@vis.gl/react-google-maps`, so it is now declared in
+`apps/web`.
+
+Dependency install scripts do not run unless `pnpm-workspace.yaml` lists them
+under `allowBuilds`. A new dependency that wants one stops the install and
+asks, rather than running code on the way in.
+
+`@gigly/shared` has no build step. Both apps compile its TypeScript source
+directly — Next via `transpilePackages` — and Node runs its tests by stripping
+the types. It depends on nothing, React included, so it cannot drag one app's
+versions into the other. Its hype numbers are for display: the database
+enforces the rules, and a test checks the two agree.
 
 Seed data is lifted from the prototype's `VENUES` / `ARTISTS` / `GIGS` arrays.
 Venues are real Liverpool rooms; artists and gigs are invented. Gig times are

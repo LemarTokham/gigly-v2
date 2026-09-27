@@ -1,8 +1,8 @@
 /**
  * Maps our venues to Skiddle venue ids, once.
  *
- *   npm run venues:skiddle
- *   npm run venues:skiddle -- --write
+ *   pnpm venues:skiddle
+ *   pnpm venues:skiddle --write
  *
  * Searching live events near Liverpool and reading the venues off them is more
  * reliable than a venue name search: it only ever returns rooms that actually

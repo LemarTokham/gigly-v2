@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Wrapper so `npm run db:*` works without touching the user's shell profile.
+# Wrapper so `pnpm db:*` works without touching the user's shell profile.
 #
 # Docker Desktop on macOS only symlinks its CLI into /usr/local/bin if you let
 # it prompt for an admin password. Skip that and the binary sits under $HOME,

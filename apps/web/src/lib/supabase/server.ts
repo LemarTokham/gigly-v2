@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "@/lib/database.types";
+import type { Database } from "@gigly/shared";
 
 /**
  * Request-scoped client. Pages are server-rendered so shared artist and gig

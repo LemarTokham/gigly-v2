@@ -187,7 +187,7 @@ const skiddleSource = {
   async fetch({ venues }) {
     const mapped = venues.filter((v) => v.skiddle_id);
     if (!mapped.length) {
-      throw new Error("No venues have a skiddle_id — run npm run venues:skiddle -- --write first");
+      throw new Error("No venues have a skiddle_id — run pnpm venues:skiddle --write first");
     }
 
     const today = new Date().toISOString().slice(0, 10);

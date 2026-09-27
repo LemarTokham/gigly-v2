@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Dependency install scripts are off unless listed here.
+allowBuilds:
+  # ESLint's resolver. Its postinstall only fetches the native binding when the
+  # platform package is missing, and pnpm already installs that package.
+  unrs-resolver: false

@@ -1,9 +1,9 @@
 /**
  * Runs every registered import source.
  *
- *   npm run import              # show what would happen
- *   npm run import -- --write
- *   npm run import -- --write --only=skiddle
+ *   pnpm run import              # show what would happen
+ *   pnpm run import --write
+ *   pnpm run import --write --only=skiddle
  *
  * Everything imported lands as pending, so a bad feed fills the approval queue
  * rather than the chart. Re-running updates rather than duplicating, keyed on

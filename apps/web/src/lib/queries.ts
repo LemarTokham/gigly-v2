@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { nightRange } from "@/lib/format";
-import type { Database } from "@/lib/database.types";
+import { HYPES_PER_WEEK, HYPE_WINDOW_MS, type Database } from "@gigly/shared";
 
 export type GenreGroup = Database["public"]["Enums"]["genre_group"];
 
@@ -394,11 +394,11 @@ export async function getHypeState(): Promise<{
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user) return { userId: null, hyped: new Set(), left: 3 };
+  if (!user) return { userId: null, hyped: new Set(), left: HYPES_PER_WEEK };
 
   // Only hypes still inside the 7 day window count as "backing now" — an older
   // row is spent and the artist can be hyped again.
-  const cutoff = new Date(Date.now() - 7 * 864e5).toISOString();
+  const cutoff = new Date(Date.now() - HYPE_WINDOW_MS).toISOString();
   const [{ data: rows }, { data: left }] = await Promise.all([
     db.from("hypes").select("artist_id").eq("user_id", user.id).gt("created_at", cutoff),
     db.rpc("hypes_remaining"),
@@ -419,7 +419,7 @@ export async function getMyHypes() {
   } = await db.auth.getUser();
   if (!user) return [];
 
-  const cutoff = new Date(Date.now() - 7 * 864e5).toISOString();
+  const cutoff = new Date(Date.now() - HYPE_WINDOW_MS).toISOString();
   const { data } = await db
     .from("hypes")
     .select(`created_at, artist:artists!inner ( ${ARTIST_FIELDS} )`)
@@ -431,7 +431,7 @@ export async function getMyHypes() {
     createdAt: r.created_at,
     daysLeft: Math.max(
       1,
-      Math.ceil((7 * 864e5 - (Date.now() - new Date(r.created_at).getTime())) / 864e5),
+      Math.ceil((HYPE_WINDOW_MS - (Date.now() - new Date(r.created_at).getTime())) / 864e5),
     ),
     artist: r.artist as unknown as SearchResults["artists"][number],
   }));

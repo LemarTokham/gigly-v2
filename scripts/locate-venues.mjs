@@ -1,8 +1,8 @@
 /**
  * Fills in venue coordinates and Google place ids. One-off.
  *
- *   npm run venues:locate            # dry run
- *   npm run venues:locate -- --write
+ *   pnpm venues:locate            # dry run
+ *   pnpm venues:locate --write
  *
  * Coordinates come from OpenStreetMap's Nominatim: no key, and its licence
  * lets us store the result. The Google place id comes from Places Text Search

@@ -1,20 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { hypeErrorMessage } from "@gigly/shared";
 import { createClient } from "@/lib/supabase/server";
 
 export type HypeResult =
   | { ok: true; hyped: boolean; left: number }
   | { ok: false; code: string; message: string };
-
-/** Maps the database's error codes to the words the prototype uses. */
-const MESSAGES: Record<string, string> = {
-  GY001: "That's all three this week. Fresh hypes on Monday.",
-  GY002: "You're already backing them.",
-  GY003: "They need a gig coming up before you can back them.",
-  GY004: "You weren't backing them.",
-  "28000": "Sign in to back an artist.",
-};
 
 async function remaining(): Promise<number> {
   const db = await createClient();
@@ -28,7 +20,7 @@ export async function castHype(artistId: string, path: string): Promise<HypeResu
 
   if (error) {
     const code = error.code ?? "";
-    return { ok: false, code, message: MESSAGES[code] ?? "That didn't work. Try again." };
+    return { ok: false, code, message: hypeErrorMessage(code) };
   }
 
   revalidatePath(path);
@@ -42,7 +34,7 @@ export async function takeBackHype(artistId: string, path: string): Promise<Hype
 
   if (error) {
     const code = error.code ?? "";
-    return { ok: false, code, message: MESSAGES[code] ?? "That didn't work. Try again." };
+    return { ok: false, code, message: hypeErrorMessage(code) };
   }
 
   revalidatePath(path);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HYPES_PER_WEEK } from "@gigly/shared";
 import { TopBar } from "@/components/top-bar";
 import { ArtistImage } from "@/components/artist-image";
 import { GigImage } from "@/components/gig-image";
@@ -52,8 +53,8 @@ export default async function YouPage() {
       <TopBar signedIn hypesLeft={hype.left} />
 
       <div className="border-line bg-card mt-1.5 flex items-center gap-4 rounded-2xl border p-4">
-        <span className="flex gap-1" role="img" aria-label={`${hype.left} of 3 hypes left`}>
-          {[0, 1, 2].map((i) => (
+        <span className="flex gap-1" role="img" aria-label={`${hype.left} of ${HYPES_PER_WEEK} hypes left`}>
+          {Array.from({ length: HYPES_PER_WEEK }, (_, i) => (
             <Icon
               key={i}
               name="flame"
