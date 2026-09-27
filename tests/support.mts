@@ -40,6 +40,20 @@ export const minutesFromNow = (m: number) => new Date(Date.now() + m * MINUTE).t
 export const hoursAgo = (h: number) => new Date(Date.now() - h * HOUR).toISOString();
 
 /**
+ * The local auth server occasionally fails a request when every test file is
+ * creating users at once, with an error its client marks as retryable. Retry
+ * exactly that, briefly; anything else is a real failure and surfaces.
+ */
+async function retryingAuth<T extends { error: unknown }>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    const result = await call();
+    const name = (result.error as { name?: string } | null)?.name;
+    if (name !== "AuthRetryableFetchError" || attempt === 4) return result;
+    await new Promise((r) => setTimeout(r, 250 * attempt));
+  }
+}
+
+/**
  * A per-file tag keeps parallel test files from touching each other's rows,
  * and makes usernames unique across runs.
  */
@@ -63,12 +77,14 @@ export function fixtures(tag: string) {
     const n = seq++;
     const email = `${run}-${n}@${tag}.gigly.test`;
     const password = "test-password-123";
-    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    const { data, error } = await retryingAuth(() =>
+      admin.auth.admin.createUser({ email, password, email_confirm: true }),
+    );
     if (error) throw error;
     users.push(data.user.id);
 
     const db = createClient(status.API_URL, status.ANON_KEY, options);
-    const signIn = await db.auth.signInWithPassword({ email, password });
+    const signIn = await retryingAuth(() => db.auth.signInWithPassword({ email, password }));
     if (signIn.error) throw signIn.error;
 
     let username: string | null = null;
@@ -82,42 +98,51 @@ export function fixtures(tag: string) {
 
   /** A profile with no session, for when only the row matters. */
   async function bareProfile(): Promise<string> {
-    const { data, error } = await admin.auth.admin.createUser({
-      email: `${run}-bare-${seq++}@${tag}.gigly.test`,
-      email_confirm: true,
-    });
+    const email = `${run}-bare-${seq++}@${tag}.gigly.test`;
+    const { data, error } = await retryingAuth(() => admin.auth.admin.createUser({ email, email_confirm: true }));
     if (error) throw error;
     users.push(data.user.id);
     return data.user.id;
   }
 
-  async function venueAndArtist() {
-    if (!venueId) {
+  // One venue and band per file, made once even when several gigs are
+  // created at the same moment. Named "Fixture", not "Test": submit.test.mts
+  // cleans up every artist called "Test Band %".
+  let place: Promise<{ venueId: string; artistId: string }> | null = null;
+  function venueAndArtist() {
+    place ??= (async () => {
       const v = await admin
         .from("venues")
-        .insert({ name: `Test Room ${run}`, slug: `test-room-${run}`, area: "Testing" })
+        .insert({ name: `Fixture Room ${run}`, slug: `fixture-room-${run}`, area: "Testing" })
         .select("id")
         .single();
       if (v.error) throw v.error;
       venueId = v.data.id;
       const a = await admin
         .from("artists")
-        .insert({ name: `Test Band ${run}`, slug: `test-band-${run}`, genre: "Indie", genre_group: "Indie" })
+        .insert({ name: `Fixture Band ${run}`, slug: `fixture-band-${run}`, genre: "Indie", genre_group: "Indie" })
         .select("id")
         .single();
       if (a.error) throw a.error;
       artistId = a.data.id;
-    }
-    return { venueId: venueId!, artistId: artistId! };
+      return { venueId: v.data.id as string, artistId: a.data.id as string };
+    })();
+    return place;
   }
 
-  /** A gig whose doors opened `doorsMinutesAgo` ago. Live unless told otherwise. */
-  async function gig(opts: { doorsMinutesAgo?: number; status?: "live" | "pending" } = {}) {
+  /**
+   * A gig whose doors opened `doorsMinutesAgo` ago (negative: still to come).
+   * Live and headlined by the file's test band unless told otherwise.
+   */
+  async function gig(
+    opts: { doorsMinutesAgo?: number; status?: "live" | "pending"; title?: string; artist?: boolean } = {},
+  ) {
     const { venueId, artistId } = await venueAndArtist();
     const g = await admin
       .from("gigs")
       .insert({
         slug: `test-gig-${run}-${seq++}`,
+        title: opts.title ?? null,
         venue_id: venueId,
         starts_at: minutesAgo(opts.doorsMinutesAgo ?? 120),
         status: opts.status ?? "live",
@@ -127,11 +152,21 @@ export function fixtures(tag: string) {
       .single();
     if (g.error) throw g.error;
     gigs.push(g.data.id);
-    await admin.from("gig_artists").insert({ gig_id: g.data.id, artist_id: artistId, position: 0 });
+    if (opts.artist !== false) {
+      const link = await admin.from("gig_artists").insert({ gig_id: g.data.id, artist_id: artistId, position: 0 });
+      if (link.error) throw link.error;
+    }
     return g.data.id as string;
   }
 
-  return { user, bareProfile, gig };
+  /** A live show with doors `days` from now, taking hypes. */
+  const upcoming = (days = 1, extra: { title?: string; artist?: boolean } = {}) =>
+    gig({ doorsMinutesAgo: -days * 24 * 60, ...extra });
+
+  /** The name of the band every gig in this file is headlined by. */
+  const bandName = () => `Fixture Band ${run}`;
+
+  return { user, bareProfile, gig, upcoming, bandName };
 }
 
 /** Put a gig's moment at an exact time (the trigger picks a random one). */

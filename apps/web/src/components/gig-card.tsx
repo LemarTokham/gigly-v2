@@ -4,6 +4,7 @@ import { Icon } from "@/components/icon";
 import { GoingButton } from "@/components/going-button";
 import { clockTime, dayWord, money, nightOf } from "@/lib/format";
 import type { GigRow } from "@/lib/queries";
+import { showName, showSupport } from "@/lib/shows";
 
 export function GigCard({
   gig,
@@ -20,10 +21,8 @@ export function GigCard({
   signedIn: boolean;
   path: string;
 }) {
-  const head = gig.lineup[0]?.artist;
-  const support = gig.lineup.slice(1).map((l) => l.artist.name);
-  const hypes = gig.lineup.reduce((n, l) => n + (hypeCounts.get(l.artist.id) ?? 0), 0);
-  if (!head) return null;
+  const support = showSupport(gig);
+  const hypes = hypeCounts.get(gig.id) ?? 0;
 
   return (
     <article className="border-line bg-card overflow-hidden rounded-2xl border">
@@ -45,7 +44,7 @@ export function GigCard({
 
         <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
           <b className="font-display block text-[clamp(24px,7.4vw,30px)] leading-[1.04] [overflow-wrap:anywhere]">
-            {head.name}
+            {showName(gig)}
           </b>
           {support.length > 0 && (
             <i className="mt-[3px] block text-sm font-semibold not-italic opacity-90">

@@ -2,8 +2,11 @@
  * Importing gigs from a feed.
  *
  * The rule that matters most here is dedupe: an importer runs on a schedule,
- * so anything that creates a second copy on the second run fills the approval
- * queue with noise and eventually the listings with duplicates.
+ * so anything that creates a second copy on the second run fills the listings
+ * with duplicates.
+ *
+ * A listing is a show: it always has a title and only sometimes names its
+ * artists. Artists are made only when the feed names them, never guessed.
  */
 import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
@@ -53,6 +56,7 @@ async function importGig(over: Record<string, unknown> = {}) {
   const res = await admin.rpc("import_gig", {
     p_source: SOURCE,
     p_source_ref: `ref-${seq++}`,
+    p_title: `Imported Show ${seq}`,
     p_artist_name: `Imported Band ${seq}`,
     p_venue_slug: "future-yard",
     p_starts_at: soon(12),
@@ -67,11 +71,12 @@ after(async () => {
   await admin.from("artists").delete().like("name", "Imported Band %");
   await admin.from("artists").delete().like("name", "Feed Support %");
   await admin.from("artists").delete().eq("name", "Shared Headliner");
+  await admin.from("artists").delete().like("name", "Named Later %");
   for (const id of createdUsers) await admin.auth.admin.deleteUser(id);
 });
 
 describe("importing a gig", () => {
-  test("creates it as pending, never live", async () => {
+  test("from an untrusted feed, it waits for review", async () => {
     const { row, error } = await importGig();
     assert.equal(error, null);
     assert.equal(row?.outcome, "created");
@@ -82,32 +87,43 @@ describe("importing a gig", () => {
       .eq("id", row!.gig_id)
       .single();
 
-    assert.equal(data?.status, "pending", "a feed is not more trusted than a person");
+    assert.equal(data?.status, "pending", "a feed not marked trusted is no more trusted than a person");
     assert.equal(data?.source, SOURCE);
     assert.notEqual(data?.imported_at, null);
     assert.equal(data?.submitted_by, null, "nobody submitted it");
   });
 
-  test("its artist cannot be hyped or charted until approved", async () => {
-    const { row } = await importGig({ p_artist_name: "Imported Band Unhypeable" });
-
-    const { data: lineup } = await admin
-      .from("gig_artists")
-      .select("artist_id")
-      .eq("gig_id", row!.gig_id)
-      .single();
-
-    const { data: hypeable } = await admin.rpc("artist_is_hypeable", {
-      p_artist_id: lineup!.artist_id,
-    });
+  test("a pending show cannot be hyped or charted", async () => {
+    const { row } = await importGig();
+    const { data: hypeable } = await admin.rpc("gig_is_hypeable", { p_gig_id: row!.gig_id });
     assert.equal(hypeable, false);
-
-    const { data: charted } = await admin
-      .from("artist_chart")
-      .select("id")
-      .eq("id", lineup!.artist_id)
-      .maybeSingle();
+    const { data: charted } = await admin.from("gig_chart").select("id").eq("id", row!.gig_id).maybeSingle();
     assert.equal(charted, null);
+  });
+
+  test("from a trusted feed, it goes live straight away, with its moment", async () => {
+    const { row } = await importGig({ p_live: true });
+    const { data } = await admin.from("gigs").select("status").eq("id", row!.gig_id).single();
+    assert.equal(data?.status, "live");
+    const { data: moment } = await admin.from("gig_moments").select("gig_id").eq("gig_id", row!.gig_id);
+    assert.equal(moment?.length, 1);
+  });
+
+  test("the listing's title is the show's name", async () => {
+    const { row } = await importGig({ p_title: "Imported Show: Album Launch" });
+    const { data } = await admin.from("gigs").select("title").eq("id", row!.gig_id).single();
+    assert.equal(data?.title, "Imported Show: Album Launch");
+  });
+
+  test("a listing that names nobody makes no artist", async () => {
+    const title = `Imported Show Nobody ${Date.now()}`;
+    const { row, error } = await importGig({ p_title: title, p_artist_name: null, p_support: ["Feed Support Ignored"] });
+    assert.equal(error, null);
+
+    const { data: lineup } = await admin.from("gig_artists").select("artist_id").eq("gig_id", row!.gig_id);
+    assert.deepEqual(lineup, [], "no guessed headliner, and no support without one");
+    const { count } = await admin.from("artists").select("*", { count: "exact", head: true }).eq("name", title);
+    assert.equal(count, 0, "the title is never turned into an artist");
   });
 
   test("support acts are added behind the headliner", async () => {
@@ -144,6 +160,29 @@ describe("importing a gig", () => {
 });
 
 describe("running the same import twice", () => {
+  test("a later run that names the headliner links them", async () => {
+    const ref = `named-${Date.now()}`;
+    const first = await importGig({ p_source_ref: ref, p_artist_name: null });
+    await importGig({ p_source_ref: ref, p_artist_name: `Named Later ${Date.now()}` });
+    const { data } = await admin.from("gig_artists").select("position").eq("gig_id", first.row!.gig_id);
+    assert.deepEqual(data, [{ position: 0 }]);
+  });
+
+  test("a trusted re-run publishes a pending show, but never a rejected one", async () => {
+    const [pendingRef, rejectedRef] = [`pend-${Date.now()}`, `rej-${Date.now()}`];
+    const pending = await importGig({ p_source_ref: pendingRef });
+    const rejected = await importGig({ p_source_ref: rejectedRef });
+    await admin.from("gigs").update({ status: "rejected" }).eq("id", rejected.row!.gig_id);
+
+    await importGig({ p_source_ref: pendingRef, p_live: true });
+    await importGig({ p_source_ref: rejectedRef, p_live: true });
+
+    const { data } = await admin.from("gigs").select("id, status").in("id", [pending.row!.gig_id, rejected.row!.gig_id]);
+    const statusOf = (id: string) => data?.find((g) => g.id === id)?.status;
+    assert.equal(statusOf(pending.row!.gig_id), "live");
+    assert.equal(statusOf(rejected.row!.gig_id), "rejected", "a person's no stands");
+  });
+
   test("updates the gig rather than duplicating it", async () => {
     const ref = `stable-${Date.now()}`;
     const first = await importGig({ p_source_ref: ref, p_artist_name: "Imported Band Stable" });
@@ -224,6 +263,15 @@ describe("a gig already here from somewhere else", () => {
     assert.equal(second.row?.outcome, "duplicate", "doors listed an hour apart is one gig");
   });
 
+  test("a show that names nobody is recognised by its title", async () => {
+    const when = soon(22);
+    const title = `Imported Show Club Night ${Date.now()}`;
+    const first = await importGig({ p_source_ref: `c1-${Date.now()}`, p_title: title, p_artist_name: null, p_starts_at: when });
+    const second = await importGig({ p_source_ref: `c2-${Date.now()}`, p_title: title.toUpperCase(), p_artist_name: null, p_starts_at: when });
+    assert.equal(second.row?.outcome, "duplicate");
+    assert.equal(second.row?.gig_id, first.row?.gig_id);
+  });
+
   test("but a different night is a different gig", async () => {
     const result = await importGig({
       p_source_ref: `far-${Date.now()}`,
@@ -245,8 +293,8 @@ describe("what an import is not allowed to do", () => {
     assert.equal(error?.code, "GY021");
   });
 
-  test("arrive with no artist name", async () => {
-    const { error } = await importGig({ p_artist_name: "  " });
+  test("arrive with no title", async () => {
+    const { error } = await importGig({ p_title: "  " });
     assert.equal(error?.code, "GY020");
   });
 
@@ -255,7 +303,7 @@ describe("what an import is not allowed to do", () => {
     const { error } = await db.rpc("import_gig", {
       p_source: "sneaky",
       p_source_ref: "1",
-      p_artist_name: "Back Door",
+      p_title: "Back Door",
       p_venue_slug: "future-yard",
       p_starts_at: soon(5),
     });
@@ -269,7 +317,7 @@ describe("what an import is not allowed to do", () => {
     const { error } = await anon.rpc("import_gig", {
       p_source: "sneaky",
       p_source_ref: "2",
-      p_artist_name: "Back Door",
+      p_title: "Back Door",
       p_venue_slug: "future-yard",
       p_starts_at: soon(5),
     });

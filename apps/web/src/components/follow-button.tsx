@@ -34,7 +34,7 @@ export function FollowButton({
           await toggleFollow(artistId, path);
         });
       }}
-      className={`inline-flex items-center justify-center gap-[7px] rounded-xl border-2 px-4 py-3 text-base font-bold ${
+      className={`inline-flex flex-1 items-center justify-center gap-[7px] rounded-xl border-2 px-4 py-3 text-base font-bold ${
         on ? "border-ink text-ink" : "border-line text-ink"
       }`}
     >

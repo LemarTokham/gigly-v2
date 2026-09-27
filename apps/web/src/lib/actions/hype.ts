@@ -14,9 +14,9 @@ async function remaining(): Promise<number> {
   return data ?? 0;
 }
 
-export async function castHype(artistId: string, path: string): Promise<HypeResult> {
+export async function castHype(gigId: string, path: string): Promise<HypeResult> {
   const db = await createClient();
-  const { error } = await db.rpc("cast_hype", { p_artist_id: artistId });
+  const { error } = await db.rpc("cast_hype", { p_gig_id: gigId });
 
   if (error) {
     const code = error.code ?? "";
@@ -24,13 +24,14 @@ export async function castHype(artistId: string, path: string): Promise<HypeResu
   }
 
   revalidatePath(path);
+  revalidatePath("/");
   revalidatePath("/chart");
   return { ok: true, hyped: true, left: await remaining() };
 }
 
-export async function takeBackHype(artistId: string, path: string): Promise<HypeResult> {
+export async function takeBackHype(gigId: string, path: string): Promise<HypeResult> {
   const db = await createClient();
-  const { error } = await db.rpc("take_back_hype", { p_artist_id: artistId });
+  const { error } = await db.rpc("take_back_hype", { p_gig_id: gigId });
 
   if (error) {
     const code = error.code ?? "";
@@ -38,6 +39,7 @@ export async function takeBackHype(artistId: string, path: string): Promise<Hype
   }
 
   revalidatePath(path);
+  revalidatePath("/");
   revalidatePath("/chart");
   return { ok: true, hyped: false, left: await remaining() };
 }

@@ -124,8 +124,8 @@ export type Database = {
             foreignKeyName: "attending_gig_id_fkey"
             columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
-            referencedColumns: ["next_gig_id"]
+            referencedRelation: "gig_chart"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attending_gig_id_fkey"
@@ -225,13 +225,6 @@ export type Database = {
             foreignKeyName: "follows_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "follows_artist_id_fkey"
-            columns: ["artist_id"]
-            isOneToOne: false
             referencedRelation: "artist_stats"
             referencedColumns: ["artist_id"]
           },
@@ -241,6 +234,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "gig_chart"
+            referencedColumns: ["headliner_id"]
           },
           {
             foreignKeyName: "follows_user_id_fkey"
@@ -335,13 +335,6 @@ export type Database = {
             foreignKeyName: "gig_artists_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gig_artists_artist_id_fkey"
-            columns: ["artist_id"]
-            isOneToOne: false
             referencedRelation: "artist_stats"
             referencedColumns: ["artist_id"]
           },
@@ -353,11 +346,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gig_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "gig_chart"
+            referencedColumns: ["headliner_id"]
+          },
+          {
             foreignKeyName: "gig_artists_gig_id_fkey"
             columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
-            referencedColumns: ["next_gig_id"]
+            referencedRelation: "gig_chart"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "gig_artists_gig_id_fkey"
@@ -396,8 +396,8 @@ export type Database = {
             foreignKeyName: "gig_moments_gig_id_fkey"
             columns: ["gig_id"]
             isOneToOne: true
-            referencedRelation: "artist_chart"
-            referencedColumns: ["next_gig_id"]
+            referencedRelation: "gig_chart"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "gig_moments_gig_id_fkey"
@@ -425,12 +425,12 @@ export type Database = {
           slug: string
           source: string
           source_ref: string | null
-          source_title: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null
           submitted_by: string | null
           ticket_url: string | null
+          title: string | null
           venue_id: string
         }
         Insert: {
@@ -442,12 +442,12 @@ export type Database = {
           slug: string
           source?: string
           source_ref?: string | null
-          source_title?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
           submitted_by?: string | null
           ticket_url?: string | null
+          title?: string | null
           venue_id: string
         }
         Update: {
@@ -459,12 +459,12 @@ export type Database = {
           slug?: string
           source?: string
           source_ref?: string | null
-          source_title?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["gig_status"]
           submitted_as?: string | null
           submitted_by?: string | null
           ticket_url?: string | null
+          title?: string | null
           venue_id?: string
         }
         Relationships: [
@@ -493,40 +493,40 @@ export type Database = {
       }
       hypes: {
         Row: {
-          artist_id: string
           created_at: string
+          gig_id: string
           user_id: string
         }
         Insert: {
-          artist_id: string
           created_at?: string
+          gig_id: string
           user_id: string
         }
         Update: {
-          artist_id?: string
           created_at?: string
+          gig_id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "hypes_artist_id_fkey"
-            columns: ["artist_id"]
+            foreignKeyName: "hypes_gig_id_fkey"
+            columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
+            referencedRelation: "gig_chart"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "hypes_artist_id_fkey"
-            columns: ["artist_id"]
+            foreignKeyName: "hypes_gig_id_fkey"
+            columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artist_stats"
-            referencedColumns: ["artist_id"]
+            referencedRelation: "gig_stats"
+            referencedColumns: ["gig_id"]
           },
           {
-            foreignKeyName: "hypes_artist_id_fkey"
-            columns: ["artist_id"]
+            foreignKeyName: "hypes_gig_id_fkey"
+            columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artists"
+            referencedRelation: "gigs"
             referencedColumns: ["id"]
           },
           {
@@ -776,8 +776,8 @@ export type Database = {
             foreignKeyName: "stubs_gig_id_fkey"
             columns: ["gig_id"]
             isOneToOne: false
-            referencedRelation: "artist_chart"
-            referencedColumns: ["next_gig_id"]
+            referencedRelation: "gig_chart"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "stubs_gig_id_fkey"
@@ -889,30 +889,6 @@ export type Database = {
       }
     }
     Views: {
-      artist_chart: {
-        Row: {
-          art_band: string[] | null
-          art_palette: number | null
-          art_seed: number | null
-          from_area: string | null
-          genre: string | null
-          genre_group: Database["public"]["Enums"]["genre_group"] | null
-          hype_count: number | null
-          id: string | null
-          is_new: boolean | null
-          name: string | null
-          next_gig_id: string | null
-          next_gig_slug: string | null
-          next_gig_starts_at: string | null
-          next_venue_name: string | null
-          next_venue_slug: string | null
-          photo_url: string | null
-          position: number | null
-          position_yesterday: number | null
-          slug: string | null
-        }
-        Relationships: []
-      }
       artist_stats: {
         Row: {
           artist_id: string | null
@@ -931,6 +907,28 @@ export type Database = {
         }
         Relationships: []
       }
+      gig_chart: {
+        Row: {
+          headliner_art_band: string[] | null
+          headliner_art_palette: number | null
+          headliner_art_seed: number | null
+          headliner_id: string | null
+          headliner_photo_url: string | null
+          headliner_slug: string | null
+          hype_count: number | null
+          hype_count_yesterday: number | null
+          id: string | null
+          image_url: string | null
+          name: string | null
+          price_pence: number | null
+          slug: string | null
+          starts_at: string | null
+          venue_area: string | null
+          venue_name: string | null
+          venue_slug: string | null
+        }
+        Relationships: []
+      }
       gig_stats: {
         Row: {
           attending_count: number | null
@@ -941,16 +939,15 @@ export type Database = {
     }
     Functions: {
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
-      artist_is_hypeable: { Args: { p_artist_id: string }; Returns: boolean }
       can_post_stub: { Args: { p_gig_id: string }; Returns: boolean }
       can_read_stub_photo: { Args: { p_name: string }; Returns: boolean }
       can_upload_stub_photo: { Args: { p_name: string }; Returns: boolean }
       cancel_request: { Args: { p_to: string }; Returns: undefined }
       cast_hype: {
-        Args: { p_artist_id: string }
+        Args: { p_gig_id: string }
         Returns: {
-          artist_id: string
           created_at: string
+          gig_id: string
           user_id: string
         }
         SetofOptions: {
@@ -960,24 +957,26 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      gig_is_hypeable: { Args: { p_gig_id: string }; Returns: boolean }
       gig_is_visible: { Args: { p_gig_id: string }; Returns: boolean }
       hype_week_start: { Args: { p_at?: string }; Returns: string }
       hypes_remaining: { Args: never; Returns: number }
       import_gig: {
         Args: {
           p_artist_links?: Json
-          p_artist_name: string
+          p_artist_name?: string
           p_artist_photo?: string
           p_genre?: string
           p_genre_group?: Database["public"]["Enums"]["genre_group"]
           p_image_url?: string
+          p_live?: boolean
           p_price_pence?: number
           p_source: string
           p_source_ref: string
-          p_source_title?: string
           p_starts_at: string
           p_support?: string[]
           p_ticket_url?: string
+          p_title: string
           p_venue_slug: string
         }
         Returns: {
@@ -1035,12 +1034,12 @@ export type Database = {
           slug: string
           source: string
           source_ref: string | null
-          source_title: string | null
           starts_at: string
           status: Database["public"]["Enums"]["gig_status"]
           submitted_as: string | null
           submitted_by: string | null
           ticket_url: string | null
+          title: string | null
           venue_id: string
         }
         SetofOptions: {
@@ -1050,7 +1049,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      take_back_hype: { Args: { p_artist_id: string }; Returns: undefined }
+      take_back_hype: { Args: { p_gig_id: string }; Returns: undefined }
       unique_artist_slug: { Args: { p_base: string }; Returns: string }
       unique_gig_slug: { Args: { p_base: string }; Returns: string }
       unregister_push_token: { Args: { p_token: string }; Returns: undefined }

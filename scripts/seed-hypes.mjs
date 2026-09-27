@@ -3,23 +3,17 @@
  *
  *   pnpm seed:hypes
  *
- * Reproduces the per-artist counts from the prototype's ARTISTS array (354
- * hypes in total), spread over enough users that nobody exceeds the
- * three-a-week allowance and nobody hypes the same artist twice. created_at is
- * staggered across the last 7 days so the rolling window and the decay have
- * realistic data to work against.
+ * Spreads a long tail of hype over whatever upcoming shows exist (a few
+ * very backed, most barely), over enough users that nobody exceeds the
+ * three-a-week allowance and nobody backs the same show twice. created_at is
+ * staggered across the last six days, so the chart's up and down arrows have
+ * something to compare against.
  *
- * Inserts go in as the service role, which bypasses RLS — but the eligibility
- * trigger still fires, so this also checks every seeded artist really is
- * hypeable. Re-running removes the previous batch first.
+ * Inserts go in as the service role, which bypasses RLS, but the trigger that
+ * refuses hypes on shows that are not live or have opened still fires. Re-running
+ * removes the previous batch first.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const data = JSON.parse(readFileSync(join(here, "prototype-data.json"), "utf8"));
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -65,25 +59,29 @@ console.log(`  removed ${removed}`);
 
 // ------------------------------------------------------------------ plan
 
-const { data: artists, error: artistErr } = await db.from("artists").select("id, slug, name");
-if (artistErr) throw artistErr;
-const bySlug = new Map(artists.map((a) => [a.slug, a]));
+const { data: shows, error: showErr } = await db.from("gig_chart").select("id, name, starts_at");
+if (showErr) throw showErr;
+if (!shows.length) {
+  console.log("No upcoming live shows to back. Run pnpm db:reset or an import first.");
+  process.exit(0);
+}
 
-const slugify = (s) =>
-  s.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const rand = rng(20260927);
 
-/** Target hype count per artist, largest first so the tight ones place early. */
-const targets = data.ARTISTS.map((a) => ({ slug: slugify(a.name), want: a.hypes }))
-  .filter((t) => bySlug.has(t.slug))
-  .sort((a, b) => b.want - a.want);
+/** Deterministically shuffled, then a long tail: 36, 30, 24, 20, ... down to 0. */
+const targets = shows
+  .map((show) => ({ show, key: rand() }))
+  .sort((a, b) => a.key - b.key)
+  .map(({ show }, i) => ({ show, want: Math.round(36 * 0.82 ** i) }))
+  .filter((t) => t.want > 0);
 
 const total = targets.reduce((n, t) => n + t.want, 0);
 const biggest = targets[0].want;
-// 3 per user caps how few users can carry the load; one hype per artist per
+// 3 per user caps how few users can carry the load; one hype per show per
 // user means we need at least as many users as the biggest single count.
 const userCount = Math.max(Math.ceil(total / 3), biggest) + 12;
 
-console.log(`planning ${total} hypes across ${userCount} users...`);
+console.log(`planning ${total} hypes on ${targets.length} shows across ${userCount} users...`);
 
 // ------------------------------------------------------------ make users
 
@@ -111,34 +109,31 @@ console.log();
 
 // ------------------------------------------------------------- assign
 
-const rand = rng(20260920);
 const rows = [];
 
 for (const t of targets) {
-  const artist = bySlug.get(t.slug);
   // rotate the starting point so the same users are not always picked first
   const start = Math.floor(rand() * users.length);
   let placed = 0;
 
   for (let step = 0; step < users.length && placed < t.want; step++) {
     const u = users[(start + step) % users.length];
-    if (u.left === 0 || u.taken.has(artist.id)) continue;
+    if (u.left === 0 || u.taken.has(t.show.id)) continue;
 
     u.left--;
-    u.taken.add(artist.id);
-    // spread over the last 7 days, never in the future, never quite at the
-    // 7 day edge where it would already have aged out
-    const ageMs = rand() * 6.8 * 864e5;
+    u.taken.add(t.show.id);
+    // spread over the last six days, never in the future
+    const ageMs = rand() * 6 * 864e5;
     rows.push({
       user_id: u.id,
-      artist_id: artist.id,
+      gig_id: t.show.id,
       created_at: new Date(Date.now() - ageMs).toISOString(),
     });
     placed++;
   }
 
   if (placed < t.want) {
-    console.warn(`  ! ${artist.name}: placed ${placed} of ${t.want}`);
+    console.warn(`  ! ${t.show.name}: placed ${placed} of ${t.want}`);
   }
 }
 
@@ -155,13 +150,14 @@ console.log();
 // -------------------------------------------------------------- verify
 
 const { data: chart, error: chartErr } = await db
-  .from("artist_chart")
-  .select("position, name, hype_count")
-  .order("position");
+  .from("gig_chart")
+  .select("name, hype_count")
+  .order("hype_count", { ascending: false })
+  .limit(10);
 if (chartErr) throw chartErr;
 
-console.log("\nchart:");
-for (const r of chart) console.log(`  ${String(r.position).padStart(2)}. ${r.name.padEnd(24)} ${r.hype_count}`);
+console.log("\ntop ten:");
+chart.forEach((r, i) => console.log(`  ${String(i + 1).padStart(2)}. ${String(r.name).slice(0, 36).padEnd(38)} ${r.hype_count}`));
 
 const over = users.filter((u) => 3 - u.left > 3);
 console.log(`\n${rows.length} hypes, ${users.length} users, max per user ${Math.max(...users.map((u) => 3 - u.left))}`);

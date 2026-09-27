@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { clockTime, dayNumber, money, nightOf, weekdayShort } from "@/lib/format";
 import { getVenueBySlug } from "@/lib/queries";
+import { showName } from "@/lib/shows";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
             </span>
             <span className="min-w-0 flex-1">
               <b className="block text-base leading-tight font-bold">
-                {g.lineup.map((l) => l.artist.name).join(", ")}
+                {showName(g)}
               </b>
               <i className="text-soft block text-[13px] not-italic">
                 {clockTime(g.starts_at)}, {money(g.price_pence)}

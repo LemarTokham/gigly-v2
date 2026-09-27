@@ -48,6 +48,7 @@ let created = 0;
 let updated = 0;
 let duplicate = 0;
 let rejected = 0;
+let awaitingReview = 0;
 
 for (const source of sources) {
   console.log(`${source.label ?? source.name}`);
@@ -71,14 +72,14 @@ for (const source of sources) {
   for (const gig of gigs) {
     const why = validate(gig, known);
     if (why) {
-      console.log(`  skip  ${String(gig.artistName ?? "?").slice(0, 28).padEnd(30)} ${why}`);
+      console.log(`  skip  ${String(gig.title ?? "?").slice(0, 28).padEnd(30)} ${why}`);
       rejected++;
       continue;
     }
 
     if (!write) {
       console.log(
-        `  would ${gig.artistName.slice(0, 28).padEnd(30)} ${gig.venueSlug.padEnd(22)} ${gig.startsAt.toISOString().slice(0, 16).replace("T", " ")}`,
+        `  would ${gig.title.slice(0, 28).padEnd(30)} ${gig.venueSlug.padEnd(22)} ${gig.startsAt.toISOString().slice(0, 16).replace("T", " ")}`,
       );
       continue;
     }
@@ -86,46 +87,50 @@ for (const source of sources) {
     const { data, error } = await db.rpc("import_gig", {
       p_source: source.name,
       p_source_ref: gig.sourceRef,
-      p_artist_name: gig.artistName,
+      p_title: gig.title,
       p_venue_slug: gig.venueSlug,
       p_starts_at: gig.startsAt.toISOString(),
+      p_artist_name: gig.artistName ?? null,
       p_price_pence: gig.pricePence ?? null,
       p_ticket_url: gig.ticketUrl ?? null,
       p_support: gig.support ?? [],
       p_genre: gig.genre ?? null,
       p_genre_group: gig.genreGroup ?? null,
-      p_source_title: gig.sourceTitle ?? null,
       p_image_url: gig.imageUrl ?? null,
       p_artist_photo: gig.artistPhoto ?? null,
       p_artist_links: gig.artistLinks ?? null,
+      p_live: source.trusted === true,
     });
 
     if (error) {
-      console.log(`  error ${gig.artistName.slice(0, 28).padEnd(30)} ${error.message.slice(0, 50)}`);
+      console.log(`  error ${gig.title.slice(0, 28).padEnd(30)} ${error.message.slice(0, 50)}`);
       rejected++;
       continue;
     }
 
     const outcome = data?.[0]?.outcome ?? "created";
-    if (outcome === "created") created++;
+    if (outcome === "created") {
+      created++;
+      if (source.trusted !== true) awaitingReview++;
+    }
     else if (outcome === "updated") updated++;
     else duplicate++;
 
-    console.log(`  ${outcome.padEnd(10)} ${gig.artistName.slice(0, 28).padEnd(30)} ${gig.venueSlug}`);
+    console.log(`  ${outcome.padEnd(10)} ${gig.title.slice(0, 28).padEnd(30)} ${gig.venueSlug}`);
   }
 }
 
 console.log(
   write
     ? `\n${created} new, ${updated} updated, ${duplicate} already here, ${rejected} skipped.` +
-        (created ? `\nThey are pending — approve them at /admin.` : "")
+        (awaitingReview ? `\n${awaitingReview} are pending — approve them at /admin.` : "")
     : "\nNothing written.",
 );
 
 /** Returns a reason to skip, or null. */
 function validate(gig, knownVenues) {
   if (!gig.sourceRef) return "no source id, cannot dedupe";
-  if (!gig.artistName?.trim()) return "no artist name";
+  if (!gig.title?.trim()) return "no title";
   if (!knownVenues.has(gig.venueSlug)) return `unknown venue ${gig.venueSlug}`;
   if (!(gig.startsAt instanceof Date) || Number.isNaN(gig.startsAt.getTime())) return "bad date";
   if (gig.startsAt < new Date()) return "already happened";

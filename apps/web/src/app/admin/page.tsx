@@ -6,6 +6,7 @@ import { AdminButtons } from "@/components/admin-buttons";
 import { createClient } from "@/lib/supabase/server";
 import { clockTime, dayWord, money, nightOf, todayNight } from "@/lib/format";
 import type { GigRow } from "@/lib/queries";
+import { showName } from "@/lib/shows";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Approvals" };
@@ -20,8 +21,8 @@ export default async function AdminPage() {
   const { data } = await db
     .from("gigs")
     .select(`
-      id, slug, starts_at, price_pence, ticket_url, status, submitted_by, submitted_as,
-      source, source_ref, source_title, imported_at, image_url,
+      id, slug, title, starts_at, price_pence, ticket_url, status, submitted_by, submitted_as,
+      source, source_ref, imported_at, image_url,
       venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
       lineup:gig_artists ( position, artist:artists!inner (
         id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band
@@ -34,7 +35,6 @@ export default async function AdminPage() {
     submitted_as: string | null;
     source: string;
     source_ref: string | null;
-    source_title: string | null;
   })[];
   const today = todayNight();
 
@@ -54,20 +54,17 @@ export default async function AdminPage() {
       ) : (
         <div className="grid gap-4">
           {pending.map((gig) => {
-            const head = gig.lineup[0]?.artist;
             return (
               <article key={gig.id} className="border-line bg-card overflow-hidden rounded-2xl border">
-                {head && (
-                  <Link href={`/gig/${gig.slug}`} className="relative block aspect-[16/10] w-full text-white">
-                    <GigImage gig={gig} />
-                    <span className="pointer-events-none absolute inset-x-0 top-[40%] bottom-0 bg-gradient-to-t from-[rgba(10,6,20,0.88)] to-transparent" />
-                    <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
-                      <b className="font-display block text-[clamp(20px,6vw,26px)] leading-[1.04]">
-                        {head.name}
-                      </b>
-                    </span>
-                  </Link>
-                )}
+                <Link href={`/gig/${gig.slug}`} className="relative block aspect-[16/10] w-full text-white">
+                  <GigImage gig={gig} />
+                  <span className="pointer-events-none absolute inset-x-0 top-[40%] bottom-0 bg-gradient-to-t from-[rgba(10,6,20,0.88)] to-transparent" />
+                  <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
+                    <b className="font-display block text-[clamp(20px,6vw,26px)] leading-[1.04]">
+                      {showName(gig)}
+                    </b>
+                  </span>
+                </Link>
                 <div className="p-3.5">
                   <p className="flex items-center gap-2 text-sm font-semibold">
                     <Icon name="clock" className="text-soft size-4" />
@@ -99,17 +96,6 @@ export default async function AdminPage() {
                       </>
                     )}
                   </p>
-                  {/* Two thirds of imported events carry no artist list, so the
-                      name was read out of the title. Showing what it was read
-                      from is the difference between spotting a bad parse and
-                      approving a junk artist page. */}
-                  {gig.source_title && (
-                    <p className="border-line bg-bg text-soft mt-2 rounded-xl border px-2.5 py-2 text-[13px]">
-                      Name read from:{" "}
-                      <span className="text-ink font-semibold">{gig.source_title}</span>
-                    </p>
-                  )}
-
                   {gig.ticket_url ? (
                     <a
                       href={gig.ticket_url}
@@ -127,7 +113,7 @@ export default async function AdminPage() {
                     </p>
                   )}
 
-                  <AdminButtons gigId={gig.id} artist={head?.name ?? "That gig"} />
+                  <AdminButtons gigId={gig.id} name={showName(gig)} />
                 </div>
               </article>
             );

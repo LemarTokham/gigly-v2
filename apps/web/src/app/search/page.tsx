@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
+import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
 import { search } from "@/lib/queries";
+import { showName } from "@/lib/shows";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +18,9 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q = "" } = await searchParams;
-  const { artists, venues } = await search(q);
-  const empty = artists.length === 0 && venues.length === 0;
+  const { shows, artists, venues } = await search(q);
+  const empty = shows.length === 0 && artists.length === 0 && venues.length === 0;
+  const today = todayNight();
 
   return (
     <div className="min-h-[70vh] pt-4">
@@ -27,6 +31,20 @@ export default async function SearchPage({
       </Suspense>
 
       <div className="mt-2">
+        {shows.map((g) => (
+          <Link key={g.id} href={`/gig/${g.slug}`} className="border-line flex items-center gap-3 border-b py-2">
+            <span className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl">
+              <GigImage gig={g} sizes="54px" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-base leading-tight font-bold">{showName(g)}</b>
+              <i className="text-soft block text-[13px] not-italic">
+                {dayWord(nightOf(g.starts_at), today)} {clockTime(g.starts_at)}, {g.venue.name}
+              </i>
+            </span>
+          </Link>
+        ))}
+
         {artists.map((a) => (
           <div key={a.id} className="border-line flex items-center gap-3 border-b py-2">
             <span className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl">
@@ -53,7 +71,7 @@ export default async function SearchPage({
 
         {empty && (
           <div className="border-line text-soft mt-4 rounded-2xl border-2 border-dashed px-4 py-[22px] text-center">
-            Nobody by that name yet.
+            Nothing by that name yet.
           </div>
         )}
       </div>

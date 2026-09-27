@@ -7,10 +7,11 @@ import { toast } from "@/components/toaster";
 import { castHype, takeBackHype } from "@/lib/actions/hype";
 
 type Props = {
-  artistId: string;
-  artistName: string;
+  gigId: string;
+  /** The show's name, for the toast and the screen-reader label. */
+  showName: string;
   hyped: boolean;
-  /** false when the artist has no upcoming live gig */
+  /** false once doors have opened, or for a show still awaiting approval */
   hypeable: boolean;
   hypesLeft: number;
   signedIn: boolean;
@@ -19,8 +20,8 @@ type Props = {
 };
 
 export function HypeButton({
-  artistId,
-  artistName,
+  gigId,
+  showName,
   hyped,
   hypeable,
   hypesLeft,
@@ -46,8 +47,8 @@ export function HypeButton({
       const next = !on;
       setOn(next);
       const result = next
-        ? await castHype(artistId, path)
-        : await takeBackHype(artistId, path);
+        ? await castHype(gigId, path)
+        : await takeBackHype(gigId, path);
 
       if (!result.ok) {
         setOn(!next);
@@ -56,14 +57,14 @@ export function HypeButton({
       }
       toast(
         next
-          ? `Hyped ${artistName}. ${result.left ? `${result.left} left this week` : "That's all three"}`
+          ? `Hyped ${showName}. ${result.left ? `${result.left} left this week` : "That's all three"}`
           : "Hype taken back",
       );
       router.refresh();
     });
   };
 
-  const label = !hypeable ? "No gig to back" : on ? "Hyped" : "Hype";
+  const label = !hypeable ? "Hypes closed" : on ? "Hyped" : "Hype";
 
   if (variant === "wide") {
     return (
@@ -86,7 +87,7 @@ export function HypeButton({
       onClick={click}
       disabled={disabled}
       aria-pressed={on}
-      aria-label={on ? `Take back hype for ${artistName}` : `Hype ${artistName}`}
+      aria-label={on ? `Take back hype for ${showName}` : `Hype ${showName}`}
       className={`border-hype grid size-[42px] shrink-0 place-items-center rounded-full border-2 disabled:opacity-35 ${
         on ? "bg-hype text-on-hype" : "text-hype"
       }`}

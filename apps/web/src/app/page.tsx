@@ -2,12 +2,13 @@ import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { GigCard } from "@/components/gig-card";
 import { DayStrip, GenreChips } from "@/components/filters";
-import { ArtistImage } from "@/components/artist-image";
+import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { dayWord, todayNight } from "@/lib/format";
+import { chartShowImage } from "@/lib/shows";
 import {
-  getChart,
   getHypeCounts,
+  getShowChart,
   getHypeState,
   getMyState,
   getUpcomingGigs,
@@ -32,7 +33,7 @@ export default async function WhatsOn({
 
   const [gigs, chart, hypeCounts, me, hype] = await Promise.all([
     getUpcomingGigs({ night, genre, viewerId: viewerId }),
-    getChart(8),
+    getShowChart("week", 8),
     getHypeCounts(),
     getMyState(),
     getHypeState(),
@@ -61,33 +62,24 @@ export default async function WhatsOn({
 
       {chart.length > 0 ? (
         <div className="-mx-4 flex gap-3.5 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {chart.map((a, i) => (
-            <Link key={a.id} href={`/artist/${a.slug}`} className="w-[84px] shrink-0 text-center">
+          {chart.map((show) => (
+            <Link key={show.id} href={`/gig/${show.slug}`} className="w-[84px] shrink-0 text-center">
               <span className="border-line relative inline-block rounded-full border-[3px] p-[3px]">
                 <span className="relative block size-[72px] overflow-hidden rounded-full">
-                  <ArtistImage
-                    artist={{
-                      slug: a.slug!,
-                      name: a.name!,
-                      photo_url: a.photo_url,
-                      art_seed: a.art_seed!,
-                      art_palette: a.art_palette!,
-                      art_band: a.art_band!,
-                    }}
-                  />
+                  <GigImage gig={chartShowImage(show)} sizes="72px" />
                 </span>
                 <span className="bg-ink text-bg font-display border-bg absolute -bottom-0.5 -left-0.5 grid size-[26px] place-items-center rounded-full border-2 text-[13px]">
-                  {i + 1}
+                  {show.position}
                 </span>
               </span>
               <em className="mt-1.5 line-clamp-2 block text-xs leading-tight font-semibold not-italic">
-                {a.name}
+                {show.name}
               </em>
             </Link>
           ))}
         </div>
       ) : (
-        <p className="text-soft text-sm">No gigs listed, so nobody to back yet.</p>
+        <p className="text-soft text-sm">Nothing on this week yet.</p>
       )}
 
       <div className="mt-[22px] mb-2.5 flex items-center justify-between">

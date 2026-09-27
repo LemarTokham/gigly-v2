@@ -16,7 +16,7 @@ export type MapVenue = {
   googlePlaceId: string | null;
   gigCount: number;
   tonight: boolean;
-  gigs: { id: string; slug: string; headliner: string; when: string; price: string }[];
+  gigs: { id: string; slug: string; name: string; when: string; price: string }[];
 };
 
 type Review = {
@@ -154,7 +154,7 @@ export function VenuePanel({ venue }: { venue: MapVenue | null }) {
                 className="border-line flex items-center gap-3 border-b py-2 last:border-b-0"
               >
                 <span className="min-w-0 flex-1">
-                  <b className="block text-[15px] leading-tight font-bold">{g.headliner}</b>
+                  <b className="block text-[15px] leading-tight font-bold">{g.name}</b>
                   <i className="text-soft block text-[13px] not-italic">
                     {g.when} · {g.price}
                   </i>

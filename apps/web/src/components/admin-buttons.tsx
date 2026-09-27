@@ -6,14 +6,14 @@ import { Icon } from "@/components/icon";
 import { toast } from "@/components/toaster";
 import { approveGig, rejectGig } from "@/lib/actions/admin";
 
-export function AdminButtons({ gigId, artist }: { gigId: string; artist: string }) {
+export function AdminButtons({ gigId, name }: { gigId: string; name: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
   const run = (what: "approve" | "reject") =>
     start(async () => {
       const result = what === "approve" ? await approveGig(gigId) : await rejectGig(gigId);
-      toast(result.ok ? (what === "approve" ? `${artist} is live` : "Rejected") : result.error);
+      toast(result.ok ? (what === "approve" ? `${name} is live` : "Rejected") : result.error);
       router.refresh();
     });
 

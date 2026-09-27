@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { nightRange } from "@/lib/format";
-import { HYPES_PER_WEEK, HYPE_WINDOW_MS, type Database } from "@gigly/shared";
+import { nightRange, todayNight } from "@/lib/format";
+import { HYPES_PER_WEEK, type Database } from "@gigly/shared";
 
 export type GenreGroup = Database["public"]["Enums"]["genre_group"];
 
@@ -19,7 +19,7 @@ const ARTIST_FIELDS =
   "id, name, slug, genre, genre_group, from_area, photo_url, art_seed, art_palette, art_band";
 
 const GIG_FIELDS = `
-  id, slug, starts_at, price_pence, ticket_url, status, submitted_by, image_url,
+  id, slug, title, starts_at, price_pence, ticket_url, status, submitted_by, image_url,
   venue:venues!inner ( id, name, slug, area, capacity, map_x, map_y ),
   lineup:gig_artists ( position, artist:artists!inner ( ${ARTIST_FIELDS} ) )
 `;
@@ -27,6 +27,8 @@ const GIG_FIELDS = `
 export type GigRow = {
   id: string;
   slug: string;
+  /** The listing's own name for the show; null for submitted shows. See showName(). */
+  title: string | null;
   starts_at: string;
   price_pence: number;
   ticket_url: string | null;
@@ -125,24 +127,64 @@ export async function getGigBySlug(slug: string): Promise<GigRow | null> {
   return data ? sortLineup(data as unknown as GigRow) : null;
 }
 
-export type ChartRow = Database["public"]["Views"]["artist_chart"]["Row"];
+export type ChartRange = "tonight" | "week" | "month" | "all";
 
-/** The chart: artists with an upcoming live gig, by hypes in the last 7 days. */
-export async function getChart(limit?: number): Promise<ChartRow[]> {
+export const CHART_RANGES: { id: ChartRange; label: string }[] = [
+  { id: "tonight", label: "Tonight" },
+  { id: "week", label: "This week" },
+  { id: "month", label: "This month" },
+  { id: "all", label: "All" },
+];
+
+export type ChartShow = Database["public"]["Views"]["gig_chart"]["Row"] & {
+  position: number;
+  positionYesterday: number;
+  /** Nothing before today: the prototype labels it rather than showing a jump. */
+  isNew: boolean;
+};
+
+/** Hype first; on a tie the sooner show, then by name, so the order is stable. */
+function rankBy(key: "hype_count" | "hype_count_yesterday") {
+  return (a: ChartShow, b: ChartShow) =>
+    (b[key] ?? 0) - (a[key] ?? 0) ||
+    Date.parse(a.starts_at!) - Date.parse(b.starts_at!) ||
+    (a.name ?? "").localeCompare(b.name ?? "");
+}
+
+/**
+ * The most anticipated shows in a range, ranked within it: No. 1 tonight is
+ * not No. 1 overall. Ranked here rather than in the view because the rank only
+ * means something once the range is chosen. "This week" and "This month" are
+ * the next 7 and 30 days.
+ */
+export async function getShowChart(range: ChartRange, limit?: number): Promise<ChartShow[]> {
   const db = await createClient();
-  let q = db.from("artist_chart").select("*").order("position", { ascending: true });
-  if (limit) q = q.limit(limit);
+  let q = db.from("gig_chart").select("*");
+
+  if (range === "tonight") {
+    const { start, end } = nightRange(todayNight());
+    q = q.gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString());
+  } else if (range !== "all") {
+    const days = range === "week" ? 7 : 30;
+    q = q.lt("starts_at", new Date(Date.now() + days * 864e5).toISOString());
+  }
+
   const { data, error } = await q;
   if (error) throw error;
-  return data ?? [];
+
+  const rows = (data ?? []).map((r) => ({ ...r, position: 0, positionYesterday: 0, isNew: false }));
+  rows.sort(rankBy("hype_count_yesterday")).forEach((r, i) => (r.positionYesterday = i + 1));
+  rows.sort(rankBy("hype_count")).forEach((r, i) => {
+    r.position = i + 1;
+    r.isNew = (r.hype_count ?? 0) > 0 && (r.hype_count_yesterday ?? 0) === 0;
+  });
+  return limit ? rows.slice(0, limit) : rows;
 }
 
 export type ArtistPage = {
   artist: Database["public"]["Tables"]["artists"]["Row"];
   gigs: GigRow[];
   followerCount: number;
-  hypeCount: number;
-  position: number | null;
 };
 
 export async function getArtistBySlug(slug: string): Promise<ArtistPage | null> {
@@ -156,10 +198,9 @@ export async function getArtistBySlug(slug: string): Promise<ArtistPage | null> 
   if (error) throw error;
   if (!artist) return null;
 
-  const [{ data: links }, { data: stats }, { data: chart }] = await Promise.all([
+  const [{ data: links }, { data: stats }] = await Promise.all([
     db.from("gig_artists").select("gig_id").eq("artist_id", artist.id),
     db.from("artist_stats").select("follower_count").eq("artist_id", artist.id).maybeSingle(),
-    db.from("artist_chart").select("hype_count, position").eq("id", artist.id).maybeSingle(),
   ]);
 
   const ids = (links ?? []).map((l) => l.gig_id);
@@ -179,8 +220,6 @@ export async function getArtistBySlug(slug: string): Promise<ArtistPage | null> 
     artist,
     gigs,
     followerCount: stats?.follower_count ?? 0,
-    hypeCount: chart?.hype_count ?? 0,
-    position: chart?.position ?? null,
   };
 }
 
@@ -253,6 +292,7 @@ export async function getVenuesForMap(range: "tonight" | "week"): Promise<VenueW
 }
 
 export type SearchResults = {
+  shows: GigRow[];
   artists: Pick<
     Database["public"]["Tables"]["artists"]["Row"],
     | "id"
@@ -274,13 +314,23 @@ export async function search(q: string): Promise<SearchResults> {
 
   if (!term) {
     const { data } = await db.from("artists").select(ARTIST_FIELDS).order("name").limit(5);
-    return { artists: data ?? [], venues: [] };
+    return { shows: [], artists: data ?? [], venues: [] };
   }
 
   // ilike with a leading wildcard cannot use a btree index. Fine for one city;
   // swap to a trigram index or tsvector when the artist table gets big.
   const like = `%${term.replace(/[%_]/g, "\\$&")}%`;
-  const [{ data: artists }, { data: venues }] = await Promise.all([
+  const [{ data: shows }, { data: artists }, { data: venues }] = await Promise.all([
+    // Shows by their own name. Most listings name no artists, so a show like
+    // "TurnTable's Halloween Party" can only be found this way.
+    db
+      .from("gigs")
+      .select(GIG_FIELDS)
+      .eq("status", "live")
+      .gt("starts_at", new Date().toISOString())
+      .ilike("title", like)
+      .order("starts_at")
+      .limit(5),
     db
       .from("artists")
       .select(ARTIST_FIELDS)
@@ -295,17 +345,17 @@ export async function search(q: string): Promise<SearchResults> {
       .limit(5),
   ]);
 
-  return { artists: artists ?? [], venues: venues ?? [] };
+  return {
+    shows: (shows as unknown as GigRow[] | null)?.map(sortLineup) ?? [],
+    artists: artists ?? [],
+    venues: venues ?? [],
+  };
 }
 
-/**
- * Hypes in the last 7 days, keyed by artist id. A gig card shows the total
- * across its line-up, as the prototype does, so a card reflects the pull of
- * the whole bill rather than just the headliner.
- */
+/** Hype per upcoming show, keyed by gig id. Shows whose doors have opened are absent. */
 export async function getHypeCounts(): Promise<Map<string, number>> {
   const db = await createClient();
-  const { data, error } = await db.from("artist_chart").select("id, hype_count");
+  const { data, error } = await db.from("gig_chart").select("id, hype_count");
   if (error) throw error;
   return new Map((data ?? []).map((r) => [r.id!, r.hype_count ?? 0]));
 }
@@ -384,7 +434,7 @@ export async function getMyGoing(): Promise<GigRow[]> {
   return (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
 }
 
-/** The signed-in user's hype state: what they back, and how many are left. */
+/** The signed-in user's hype state: which shows they back, and how many are left. */
 export async function getHypeState(): Promise<{
   userId: string | null;
   hyped: Set<string>;
@@ -396,45 +446,39 @@ export async function getHypeState(): Promise<{
   } = await db.auth.getUser();
   if (!user) return { userId: null, hyped: new Set(), left: HYPES_PER_WEEK };
 
-  // Only hypes still inside the 7 day window count as "backing now" — an older
-  // row is spent and the artist can be hyped again.
-  const cutoff = new Date(Date.now() - HYPE_WINDOW_MS).toISOString();
   const [{ data: rows }, { data: left }] = await Promise.all([
-    db.from("hypes").select("artist_id").eq("user_id", user.id).gt("created_at", cutoff),
+    db.from("hypes").select("gig_id").eq("user_id", user.id),
     db.rpc("hypes_remaining"),
   ]);
 
   return {
     userId: user.id,
-    hyped: new Set((rows ?? []).map((r) => r.artist_id)),
+    hyped: new Set((rows ?? []).map((r) => r.gig_id)),
     left: left ?? 0,
   };
 }
 
-/** Artists the user is backing right now, with how long each has left. */
-export async function getMyHypes() {
+/** Shows the user is backing whose doors have not opened yet, soonest first. */
+export async function getMyHypes(): Promise<GigRow[]> {
   const db = await createClient();
   const {
     data: { user },
   } = await db.auth.getUser();
   if (!user) return [];
 
-  const cutoff = new Date(Date.now() - HYPE_WINDOW_MS).toISOString();
-  const { data } = await db
-    .from("hypes")
-    .select(`created_at, artist:artists!inner ( ${ARTIST_FIELDS} )`)
-    .eq("user_id", user.id)
-    .gt("created_at", cutoff)
-    .order("created_at", { ascending: false });
+  const { data: rows } = await db.from("hypes").select("gig_id").eq("user_id", user.id);
+  const ids = (rows ?? []).map((r) => r.gig_id);
+  if (!ids.length) return [];
 
-  return (data ?? []).map((r) => ({
-    createdAt: r.created_at,
-    daysLeft: Math.max(
-      1,
-      Math.ceil((HYPE_WINDOW_MS - (Date.now() - new Date(r.created_at).getTime())) / 864e5),
-    ),
-    artist: r.artist as unknown as SearchResults["artists"][number],
-  }));
+  const { data } = await db
+    .from("gigs")
+    .select(GIG_FIELDS)
+    .in("id", ids)
+    .eq("status", "live")
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  return (data as unknown as GigRow[] | null)?.map(sortLineup) ?? [];
 }
 
 /** Whether the signed-in user can reach the approval queue. */

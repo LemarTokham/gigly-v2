@@ -52,66 +52,47 @@ function toPence(event) {
 }
 
 /**
- * Two thirds of live events carry no parsed artist list, so the name has to
- * come out of the event title. These strip the wrapping a promoter puts round
- * a band's name — never the name itself, and if a rule would leave nothing
- * useful the original title is kept instead.
+ * The show's name is the event's own title, less the location a promoter
+ * tacks on: the venue is shown beside it anyway. Everything else is kept.
+ * "Gallus: Album Launch Show" and "Big Condo Records Presents Aftermath 9"
+ * are the show; "Natalie McCool - The Kazimier Stockroom, Liverpool" is
+ * Natalie McCool.
+ *
+ * Artists are never read out of the title. Two thirds of Skiddle's events name
+ * no artists, and guessing turned club nights and parties into artist pages.
  */
-const TITLE_RULES = [
-  // "Big Condo Records Presents EMZz - ..." -> "EMZz - ..."
-  [/^.{2,40}?\s+presents[:\s]+/i, ""],
-  // "... @ The Jacaranda", "... Live At The Kazimier Stockroom"
-  [/\s+(?:@|live\s+(?:at|in))\s+.+$/i, ""],
-  // "OOIOO (YoshimiO // Boredoms)" -> "OOIOO"
-  [/\s*\([^)]*\)\s*$/, ""],
-  // "Gallus: Album Launch Show", "Courds: Jacaranda Residency"
-  [/\s*:\s+.+$/, ""],
-  // "Natalie McCool - The Kazimier Stockroom, Liverpool"
-  [/\s+[-–]\s+.+$/, ""],
-  // trailing tour or launch wording left over
-  [/\s+(?:uk\s+)?tour\s*20\d\d$/i, ""],
-];
-
-function fromTitle(title) {
-  let name = String(title ?? "").trim();
-
-  for (const [pattern, replacement] of TITLE_RULES) {
-    const next = name.replace(pattern, replacement).trim();
-    // A rule that eats the whole name has misfired — "Johnsysshots Presents:"
-    // is all wrapper and no band, and the title is the best we have.
-    if (next.length >= 2) name = next;
-  }
-  return name;
+function cleanTitle(title, venueName) {
+  const original = String(title ?? "").replace(/\s+/g, " ").trim();
+  const place = [venueName, venueName.replace(/^the\s+/i, ""), "Liverpool"]
+    .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const cleaned = original
+    // "... - The Kazimier Stockroom, Liverpool", "... - Liverpool"
+    .replace(new RegExp(`\\s+[-–|]\\s+(?:the\\s+)?(?:${place})\\b.*$`, "i"), "")
+    // "... @ The Jacaranda", "... Live At The Kazimier Stockroom"
+    .replace(new RegExp(`\\s+(?:@|at|live\\s+(?:at|in))\\s+(?:the\\s+)?(?:${place})\\b.*$`, "i"), "")
+    // a separator left dangling: "Johnsysshots Presents:"
+    .replace(/[\s:|–-]+$/, "")
+    .trim();
+  return cleaned.length >= 2 ? cleaned : original;
 }
 
 /**
- * The headline act, its photo and its streaming link, and whether we are
- * confident about the name.
- *
- * A photo only ever exists where Skiddle parsed an artist list, which is the
- * same set of events where the name is reliable — so an uncertain name never
- * arrives wearing someone else's face.
+ * The headline act, its photo and its streaming link, if Skiddle names one.
+ * A photo only ever exists where Skiddle parsed an artist list, so a name and
+ * a face always arrive together or not at all.
  */
 function headliner(event) {
   const first = (event.artists ?? [])[0];
   const named = typeof first === "string" ? first : first?.name;
+  if (!named?.trim()) return null;
 
-  if (named?.trim()) {
-    const links = {};
-    if (first?.spotifyartisturl) links.spotify = first.spotifyartisturl;
-    return {
-      name: named.trim(),
-      guessed: false,
-      photo: first?.image ?? null,
-      links: Object.keys(links).length ? links : null,
-    };
-  }
-
+  const links = {};
+  if (first?.spotifyartisturl) links.spotify = first.spotifyartisturl;
   return {
-    name: fromTitle(event.eventname ?? event.name),
-    guessed: true,
-    photo: null,
-    links: null,
+    name: named.trim(),
+    photo: first?.image ?? null,
+    links: Object.keys(links).length ? links : null,
   };
 }
 
@@ -183,6 +164,10 @@ function genreOf(event) {
 const skiddleSource = {
   name: "skiddle",
   label: "Skiddle",
+  // Published without review. Every event is a real listing at a venue whose
+  // Skiddle id was matched by name, and a show is fine under its own title
+  // whether or not it names its artists.
+  trusted: true,
 
   async fetch({ venues }) {
     const mapped = venues.filter((v) => v.skiddle_id);
@@ -218,26 +203,25 @@ const skiddleSource = {
         const startsAt = toInstant(e.date ?? e.startdate, e.openingtimes?.doorsopen);
         if (!startsAt) continue;
 
-        const { name, guessed, photo, links } = headliner(e);
-        if (!name) continue;
+        const title = cleanTitle(e.eventname ?? e.name, venue.name);
+        if (!title) continue;
+        const head = headliner(e);
         const { genre, group } = genreOf(e);
 
         out.push({
           sourceRef: String(e.id ?? e.eventid ?? ""),
           venueSlug: venue.slug,
-          artistName: name,
-          support: support(e),
+          title,
+          artistName: head?.name ?? null,
+          support: head ? support(e) : [],
           startsAt,
           pricePence: toPence(e),
           ticketUrl: e.link ?? null,
           imageUrl: artwork(e),
-          artistPhoto: photo,
-          artistLinks: links,
+          artistPhoto: head?.photo ?? null,
+          artistLinks: head?.links ?? null,
           genre,
           genreGroup: group,
-          // Kept only when the name was read out of the title, so the approval
-          // queue can show what it was read from.
-          sourceTitle: guessed ? (e.eventname ?? null) : null,
         });
       }
     }

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { ArtistImage } from "@/components/artist-image";
 import { Icon } from "@/components/icon";
 import { FollowButton } from "@/components/follow-button";
-import { HypeButton } from "@/components/hype-button";
 import {
   clockTime,
   dayNumber,
@@ -14,7 +13,7 @@ import {
   todayNight,
   weekdayShort,
 } from "@/lib/format";
-import { getArtistBySlug, getHypeState, getMyState } from "@/lib/queries";
+import { getArtistBySlug, getHypeCounts, getMyState } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -41,14 +40,16 @@ export async function generateMetadata({
 
 export default async function ArtistPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [page, me, hype] = await Promise.all([
+  const [page, me, hypeCounts] = await Promise.all([
     getArtistBySlug(slug),
     getMyState(),
-    getHypeState(),
+    getHypeCounts(),
   ]);
   if (!page) notFound();
 
-  const { artist, gigs, followerCount, hypeCount, position } = page;
+  // Artists are not ranked or hyped: their shows are. The page is for finding
+  // out who they are and where to see them next.
+  const { artist, gigs, followerCount } = page;
 
   return (
     <article className="-mx-4">
@@ -72,11 +73,10 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
           )}
         </div>
 
-        <div className="mt-3.5 grid grid-cols-3 gap-2">
+        <div className="mt-3.5 grid grid-cols-2 gap-2">
           {[
-            [hypeCount, "hypes this week"],
-            [position ? `No. ${position}` : "–", "in Liverpool"],
-            [followerCount, "followers"],
+            [gigs.length, gigs.length === 1 ? "show coming up" : "shows coming up"],
+            [followerCount, followerCount === 1 ? "follower" : "followers"],
           ].map(([v, label]) => (
             <div key={label} className="border-line bg-card rounded-xl border px-1.5 py-2.5 text-center">
               <b className="font-display block text-xl leading-[1.1] font-normal">{v}</b>
@@ -86,16 +86,6 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
         </div>
 
         <div className="mt-3.5 flex items-stretch gap-2">
-          <HypeButton
-            artistId={artist.id}
-            artistName={artist.name}
-            hyped={hype.hyped.has(artist.id)}
-            hypeable={gigs.length > 0}
-            hypesLeft={hype.left}
-            signedIn={!!hype.userId}
-            path={`/artist/${artist.slug}`}
-            variant="wide"
-          />
           <FollowButton
             artistId={artist.id}
             following={me.following.has(artist.id)}
@@ -128,10 +118,17 @@ export default async function ArtistPage({ params }: { params: Promise<{ slug: s
               <span className="min-w-0 flex-1">
                 <b className="block text-base leading-tight font-bold">{g.venue.name}</b>
                 <i className="text-soft block text-[13px] not-italic">
+                  {g.title ? `${g.title}, ` : ""}
                   {clockTime(g.starts_at)}, {money(g.price_pence)}
                 </i>
               </span>
-              <Icon name="go" className="text-soft" />
+              <span
+                className="text-hype inline-flex items-center gap-[3px] text-sm font-bold"
+                aria-label={`${hypeCounts.get(g.id) ?? 0} hypes`}
+              >
+                <Icon name="flame" className="size-4" />
+                {hypeCounts.get(g.id) ?? 0}
+              </span>
             </Link>
           ))
         ) : (

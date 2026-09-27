@@ -5,6 +5,7 @@ import { ArtistImage } from "@/components/artist-image";
 import { GigImage } from "@/components/gig-image";
 import { Icon } from "@/components/icon";
 import { signOut } from "@/lib/actions/auth";
+import { showName } from "@/lib/shows";
 import { clockTime, dayWord, nightOf, todayNight } from "@/lib/format";
 import {
   getHypeState,
@@ -75,22 +76,18 @@ export default async function YouPage() {
           <div className="mt-[22px] mb-2.5">
             <h2 className="font-display text-xl leading-[1.1]">Backing now</h2>
           </div>
-          {backing.map((b) => (
-            <div key={b.artist.id} className="border-line flex items-center gap-3 border-b py-2">
-              <Link
-                href={`/artist/${b.artist.slug}`}
-                aria-label={b.artist.name}
-                className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl"
-              >
-                <ArtistImage artist={b.artist} />
-              </Link>
-              <Link href={`/artist/${b.artist.slug}`} className="min-w-0 flex-1">
-                <b className="block text-base leading-tight font-bold">{b.artist.name}</b>
+          {backing.map((g) => (
+            <Link key={g.id} href={`/gig/${g.slug}`} className="border-line flex items-center gap-3 border-b py-2">
+              <span className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl">
+                <GigImage gig={g} sizes="54px" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block text-base leading-tight font-bold">{showName(g)}</b>
                 <i className="text-soft block text-[13px] not-italic">
-                  Counts for {b.daysLeft} more {b.daysLeft === 1 ? "day" : "days"}
+                  {dayWord(nightOf(g.starts_at), today)} {clockTime(g.starts_at)}, {g.venue.name}. Counts until doors.
                 </i>
-              </Link>
-            </div>
+              </span>
+            </Link>
           ))}
         </>
       )}
@@ -106,7 +103,7 @@ export default async function YouPage() {
                 <GigImage gig={g} />
               </span>
               <b className="mt-[7px] block text-[15px] leading-tight font-bold">
-                {g.lineup[0].artist.name}
+                {showName(g)}
               </b>
               <i className="text-soft block text-[13px] not-italic">
                 {dayWord(nightOf(g.starts_at), today)} {clockTime(g.starts_at)}, {g.venue.name}

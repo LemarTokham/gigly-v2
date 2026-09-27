@@ -1,379 +1,247 @@
 /**
- * Hype rules, tested against the real local Postgres — real policies, real
- * constraints, real JWTs. Mocking the Supabase client here would test the mock:
- * every rule below lives in the database, not in TypeScript.
+ * Hype rules, tested against the real local Postgres: real policies, real
+ * constraints, real JWTs. Every rule lives in the database, so mocking the
+ * client would only test the mock.
+ *
+ * A hype backs a show and counts until its doors open. Three a week, reset
+ * Monday 00:00 Europe/London, one per show, and taking one back before doors
+ * returns it.
  *
  *   pnpm db:start   (once)
- *   ppnpm test
+ *   pnpm test
  */
-import { test, describe, before, after } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { HYPES_PER_WEEK } from "../packages/shared/src/hype.ts";
+import { admin, anon, code, fixtures, minutesAgo } from "./support.mts";
 
-// ---------------------------------------------------------------- bootstrap
+const f = fixtures("hype");
 
-const status = JSON.parse(
-  execFileSync("sh", ["scripts/supabase.sh", "status", "-o", "json"], {
-    encoding: "utf8",
-    cwd: new URL("..", import.meta.url).pathname,
-  }),
-) as Record<string, string>;
-
-const API_URL = status.API_URL;
-const ANON_KEY = status.ANON_KEY;
-const SERVICE_KEY = status.SERVICE_ROLE_KEY;
-
-const admin = createClient(API_URL, SERVICE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
-/** Error code from a failed rpc, e.g. "GY001". */
-const code = (e: unknown) => (e as { code?: string } | null)?.code;
-
-/** Per-file domain: the two test files must not delete each other's users. */
-const DOMAIN = "hype.gigly.test";
-
-const created: string[] = [];
-let userSeq = 0;
-async function newUser(): Promise<{ id: string; db: SupabaseClient }> {
-  const email = `test-${Date.now()}-${userSeq++}@${DOMAIN}`;
-  const password = "hype-test-password";
-
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-  if (error) throw error;
-
-  const db = createClient(API_URL, ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const signIn = await db.auth.signInWithPassword({ email, password });
-  if (signIn.error) throw signIn.error;
-
-  created.push(data.user!.id);
-  return { id: data.user!.id, db };
-}
-
-/** Artist ids by slug, for the seeded twelve plus the fixtures below. */
-const artist: Record<string, string> = {};
-
-/** Move a hype back in time. Service role bypasses RLS and the write revoke. */
-async function backdate(userId: string, artistId: string, days: number) {
+/** Move someone's hype on a show back in time. The service role can. */
+async function backdate(userId: string, gigId: string, days: number) {
   const { error } = await admin
     .from("hypes")
     .update({ created_at: new Date(Date.now() - days * 864e5).toISOString() })
     .eq("user_id", userId)
-    .eq("artist_id", artistId);
+    .eq("gig_id", gigId);
   if (error) throw error;
 }
 
-async function chartCount(artistId: string): Promise<number> {
-  const { data, error } = await admin
-    .from("artist_chart")
-    .select("hype_count")
-    .eq("id", artistId)
+async function chartRow(gigId: string) {
+  const { data, error } = await anon()
+    .from("gig_chart")
+    .select("name, hype_count, hype_count_yesterday")
+    .eq("id", gigId)
     .maybeSingle();
   if (error) throw error;
-  return data?.hype_count ?? 0;
+  return data;
 }
 
-// Fixtures the seed cannot provide: all twelve seeded artists are hypeable.
-let fixtureVenue: string;
-
-before(async () => {
-  const { data: artists, error } = await admin.from("artists").select("id, slug");
-  if (error) throw error;
-  for (const a of artists!) artist[a.slug] = a.id;
-
-  const { data: venue } = await admin.from("venues").select("id").limit(1).single();
-  fixtureVenue = venue!.id;
-
-  // an artist with no gig at all
-  const noGig = await admin
-    .from("artists")
-    .insert({ name: "Test No Gig", slug: "test-no-gig", genre: "Test", genre_group: "Indie" })
-    .select("id")
-    .single();
-  artist["test-no-gig"] = noGig.data!.id;
-
-  // an artist whose only gig is awaiting approval
-  const pending = await admin
-    .from("artists")
-    .insert({ name: "Test Pending", slug: "test-pending", genre: "Test", genre_group: "Indie" })
-    .select("id")
-    .single();
-  artist["test-pending"] = pending.data!.id;
-
-  const pendingGig = await admin
-    .from("gigs")
-    .insert({
-      slug: "test-pending-gig",
-      venue_id: fixtureVenue,
-      starts_at: new Date(Date.now() + 5 * 864e5).toISOString(),
-      status: "pending",
-    })
-    .select("id")
-    .single();
-  await admin
-    .from("gig_artists")
-    .insert({ gig_id: pendingGig.data!.id, artist_id: artist["test-pending"], position: 0 });
-
-  // an artist whose only gig has already started
-  const past = await admin
-    .from("artists")
-    .insert({ name: "Test Past", slug: "test-past", genre: "Test", genre_group: "Indie" })
-    .select("id")
-    .single();
-  artist["test-past"] = past.data!.id;
-
-  // chart-eligible and starts with no hypes at all, for the movement tests
-  const fresh = await admin
-    .from("artists")
-    .insert({ name: "Test Fresh", slug: "test-fresh", genre: "Test", genre_group: "Indie" })
-    .select("id")
-    .single();
-  artist["test-fresh"] = fresh.data!.id;
-
-  const freshGig = await admin
-    .from("gigs")
-    .insert({
-      slug: "test-fresh-gig",
-      venue_id: fixtureVenue,
-      starts_at: new Date(Date.now() + 6 * 864e5).toISOString(),
-      status: "live",
-    })
-    .select("id")
-    .single();
-  await admin
-    .from("gig_artists")
-    .insert({ gig_id: freshGig.data!.id, artist_id: artist["test-fresh"], position: 0 });
-
-  const pastGig = await admin
-    .from("gigs")
-    .insert({
-      slug: "test-past-gig",
-      venue_id: fixtureVenue,
-      starts_at: new Date(Date.now() - 3600_000).toISOString(),
-      status: "live",
-    })
-    .select("id")
-    .single();
-  await admin
-    .from("gig_artists")
-    .insert({ gig_id: pastGig.data!.id, artist_id: artist["test-past"], position: 0 });
-});
-
-after(async () => {
-  for (const slug of ["test-no-gig", "test-pending", "test-past", "test-fresh"]) {
-    await admin.from("artists").delete().eq("slug", slug);
-  }
-  for (const slug of ["test-pending-gig", "test-past-gig", "test-fresh-gig"]) {
-    await admin.from("gigs").delete().eq("slug", slug);
-  }
-  for (const id of created) await admin.auth.admin.deleteUser(id);
-});
+const remaining = async (db: Awaited<ReturnType<typeof f.user>>["db"]) =>
+  (await db.rpc("hypes_remaining")).data as number;
 
 // ------------------------------------------------------------- allowance
 
 describe("the three-a-week allowance", () => {
   test("the web and the app are told the same allowance the database enforces", async () => {
-    const { db } = await newUser();
-    assert.equal((await db.rpc("hypes_remaining")).data, HYPES_PER_WEEK);
+    const me = await f.user();
+    assert.equal(await remaining(me.db), HYPES_PER_WEEK);
   });
 
-  test("three hypes are allowed and the fourth is refused", async () => {
-    const { db } = await newUser();
-    const slugs = ["dock-leaf", "marzipan-riot", "velvet-ferry", "low-tide-club"];
-
-    for (const slug of slugs.slice(0, 3)) {
-      const { error } = await db.rpc("cast_hype", { p_artist_id: artist[slug] });
-      assert.equal(error, null, `${slug} should have been hypeable`);
+  test("three shows can be backed and the fourth is refused", async () => {
+    const me = await f.user();
+    const shows = await Promise.all([1, 2, 3, 4].map((d) => f.upcoming(d)));
+    for (const show of shows.slice(0, 3)) {
+      assert.equal((await me.db.rpc("cast_hype", { p_gig_id: show })).error, null);
     }
-
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["low-tide-club"] });
-    assert.equal(code(error), "GY001", "fourth hype must be refused");
+    assert.equal(code((await me.db.rpc("cast_hype", { p_gig_id: shows[3] })).error), "GY001");
   });
 
-  test("hypes_remaining counts down from three", async () => {
-    const { db } = await newUser();
-    assert.equal((await db.rpc("hypes_remaining")).data, 3);
-
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal((await db.rpc("hypes_remaining")).data, 2);
-
-    await db.rpc("cast_hype", { p_artist_id: artist["marzipan-riot"] });
-    assert.equal((await db.rpc("hypes_remaining")).data, 1);
+  test("hypes_remaining counts down", async () => {
+    const me = await f.user();
+    const [a, b] = await Promise.all([f.upcoming(1), f.upcoming(2)]);
+    await me.db.rpc("cast_hype", { p_gig_id: a });
+    assert.equal(await remaining(me.db), 2);
+    await me.db.rpc("cast_hype", { p_gig_id: b });
+    assert.equal(await remaining(me.db), 1);
   });
 
-  test("taking a hype back returns it to the allowance", async () => {
-    const { db } = await newUser();
-    for (const slug of ["dock-leaf", "marzipan-riot", "velvet-ferry"]) {
-      await db.rpc("cast_hype", { p_artist_id: artist[slug] });
-    }
-    assert.equal((await db.rpc("hypes_remaining")).data, 0);
-
-    const { error: back } = await db.rpc("take_back_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(back, null);
-    assert.equal((await db.rpc("hypes_remaining")).data, 1);
-
-    // and the freed hype is spendable on someone else
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["low-tide-club"] });
-    assert.equal(error, null);
+  test("taking one back before doors returns it", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    assert.equal((await me.db.rpc("take_back_hype", { p_gig_id: show })).error, null);
+    assert.equal(await remaining(me.db), 3);
   });
 
-  test("taking back a hype that was never cast is refused", async () => {
-    const { db } = await newUser();
-    const { error } = await db.rpc("take_back_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(code(error), "GY004");
+  test("last week's hypes do not count against this week", async () => {
+    const me = await f.user();
+    const show = await f.upcoming(20);
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    await backdate(me.id, show, 8);
+    assert.equal(await remaining(me.db), 3);
   });
 
-  test("six concurrent casts still only spend three", async () => {
-    const { db } = await newUser();
-    const slugs = [
-      "dock-leaf",
-      "marzipan-riot",
-      "velvet-ferry",
-      "low-tide-club",
-      "nans-carpet",
-      "ozone-layer-cake",
-    ];
+  test("six casts at once still only spend three", async () => {
+    const me = await f.user();
+    const shows = await Promise.all([1, 2, 3, 4, 5, 6].map((d) => f.upcoming(d)));
+    const results = await Promise.all(shows.map((s) => me.db.rpc("cast_hype", { p_gig_id: s })));
+    assert.equal(results.filter((r) => r.error === null).length, 3);
+    assert.equal(await remaining(me.db), 0);
+  });
 
-    const results = await Promise.all(
-      slugs.map((s) => db.rpc("cast_hype", { p_artist_id: artist[s] })),
-    );
-
-    const ok = results.filter((r) => r.error === null).length;
-    assert.equal(ok, 3, "advisory lock must stop concurrent casts overspending");
-    assert.equal((await db.rpc("hypes_remaining")).data, 0);
+  test("signed out, nothing can be hyped", async () => {
+    const show = await f.upcoming();
+    assert.ok((await anon().rpc("cast_hype", { p_gig_id: show })).error);
   });
 });
 
-// --------------------------------------------------------- one per artist
+// ---------------------------------------------------------- one per show
 
-describe("one hype per artist per user", () => {
-  test("hyping the same artist twice is refused", async () => {
-    const { db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(code(error), "GY002");
+describe("one hype per person per show", () => {
+  test("backing the same show twice is refused", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    assert.equal(code((await me.db.rpc("cast_hype", { p_gig_id: show })).error), "GY002");
   });
 
-  test("a second hype is still refused at six days", async () => {
-    const { id, db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    await backdate(id, artist["dock-leaf"], 6);
-
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(code(error), "GY002", "still inside the 7 day window");
-  });
-
-  test("once the window has lapsed the artist can be hyped again", async () => {
-    const { id, db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    await backdate(id, artist["dock-leaf"], 8);
-
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(error, null, "past 7 days the hype should be castable again");
-
-    // still exactly one row for the pair
-    const { count } = await admin
-      .from("hypes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", id)
-      .eq("artist_id", artist["dock-leaf"]);
-    assert.equal(count, 1, "a re-hype refreshes the row, it does not add one");
-  });
-
-  test("a lapsed hype does not count against this week's allowance", async () => {
-    const { id, db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    await backdate(id, artist["dock-leaf"], 8);
-
-    assert.equal((await db.rpc("hypes_remaining")).data, 3);
+  test("and a refused second hype does not spend the allowance", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    assert.equal(await remaining(me.db), 2);
   });
 });
 
-// ---------------------------------------------------------- eligibility
+// ------------------------------------------------ which shows take hypes
 
-describe("only artists with an upcoming live gig can be hyped", () => {
-  test("an artist with no gig at all is refused", async () => {
-    const { db } = await newUser();
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["test-no-gig"] });
+describe("which shows can be hyped", () => {
+  test("a show still waiting for approval cannot", async () => {
+    const me = await f.user();
+    const show = await f.gig({ status: "pending", doorsMinutesAgo: -24 * 60 });
+    assert.equal(code((await me.db.rpc("cast_hype", { p_gig_id: show })).error), "GY003");
+    assert.equal(await remaining(me.db), 3, "a refused hype costs nothing");
+  });
+
+  test("a show whose doors have opened cannot", async () => {
+    const me = await f.user();
+    const show = await f.gig({ doorsMinutesAgo: 5 });
+    assert.equal(code((await me.db.rpc("cast_hype", { p_gig_id: show })).error), "GY003");
+  });
+
+  test("a show with a title and no artists can", async () => {
+    const me = await f.user();
+    const show = await f.upcoming(1, { title: "TurnTable's Halloween Party", artist: false });
+    assert.equal((await me.db.rpc("cast_hype", { p_gig_id: show })).error, null);
+  });
+
+  test("gig_is_hypeable says the same", async () => {
+    const [open, pending, started] = await Promise.all([
+      f.upcoming(),
+      f.gig({ status: "pending", doorsMinutesAgo: -60 }),
+      f.gig({ doorsMinutesAgo: 5 }),
+    ]);
+    const ask = async (id: string) => (await anon().rpc("gig_is_hypeable", { p_gig_id: id })).data;
+    assert.deepEqual([await ask(open), await ask(pending), await ask(started)], [true, false, false]);
+  });
+
+  test("the service role cannot slip one in either: the trigger holds", async () => {
+    const me = await f.user();
+    const show = await f.gig({ status: "pending", doorsMinutesAgo: -60 });
+    const { error } = await admin.from("hypes").insert({ user_id: me.id, gig_id: show });
     assert.equal(code(error), "GY003");
   });
+});
 
-  test("an artist whose only gig is still pending is refused", async () => {
-    const { db } = await newUser();
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["test-pending"] });
-    assert.equal(code(error), "GY003", "a pending gig must not open hyping");
+// ---------------------------------------------------------- until doors
+
+describe("a hype counts until doors open", () => {
+  test("however long ago it was cast", async () => {
+    const me = await f.user();
+    const show = await f.upcoming(40);
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    await backdate(me.id, show, 30);
+    assert.equal((await chartRow(show))?.hype_count, 1, "no 7-day fade any more");
   });
 
-  test("hyping closes once the gig has started", async () => {
-    const { db } = await newUser();
-    const { error } = await db.rpc("cast_hype", { p_artist_id: artist["test-past"] });
-    assert.equal(code(error), "GY003");
+  test("then the show leaves the chart, and the hype stays on record", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    await admin.from("gigs").update({ starts_at: minutesAgo(1) }).eq("id", show);
+
+    assert.equal(await chartRow(show), null, "doors are open: off the chart");
+    const { data } = await me.db.from("hypes").select("gig_id").eq("gig_id", show);
+    assert.equal(data?.length, 1, "who backed it is kept");
   });
 
-  test("a refused hype does not consume the allowance", async () => {
-    const { db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["test-no-gig"] });
-    assert.equal((await db.rpc("hypes_remaining")).data, 3);
+  test("once doors open a hype cannot be taken back", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    await me.db.rpc("cast_hype", { p_gig_id: show });
+    await admin.from("gigs").update({ starts_at: minutesAgo(1) }).eq("id", show);
+
+    assert.equal(code((await me.db.rpc("take_back_hype", { p_gig_id: show })).error), "GY005");
+    assert.equal(await remaining(me.db), 2, "it was spent on that show");
+  });
+
+  test("taking back one you never cast is GY004", async () => {
+    const me = await f.user();
+    const show = await f.upcoming();
+    assert.equal(code((await me.db.rpc("take_back_hype", { p_gig_id: show })).error), "GY004");
   });
 });
 
-// ------------------------------------------------------- scoring + window
+// ---------------------------------------------------------------- chart
 
-describe("scoring and the rolling seven day window", () => {
-  test("every hype is worth exactly one point", async () => {
-    // The Overheads have 5400 followers in the seed, Kirkdale Static 130.
-    // Both must move the chart by exactly 1 per hype.
-    const a = await newUser();
-    const b = await newUser();
-
-    const beforeBig = await chartCount(artist["the-overheads"]);
-    const beforeSmall = await chartCount(artist["kirkdale-static"]);
-
-    await a.db.rpc("cast_hype", { p_artist_id: artist["the-overheads"] });
-    await b.db.rpc("cast_hype", { p_artist_id: artist["the-overheads"] });
-    await a.db.rpc("cast_hype", { p_artist_id: artist["kirkdale-static"] });
-
-    assert.equal(await chartCount(artist["the-overheads"]), beforeBig + 2);
-    assert.equal(await chartCount(artist["kirkdale-static"]), beforeSmall + 1);
+describe("the chart", () => {
+  test("holds live shows whose doors have not opened, and nothing else", async () => {
+    const [open, pending, started] = await Promise.all([
+      f.upcoming(),
+      f.gig({ status: "pending", doorsMinutesAgo: -60 }),
+      f.gig({ doorsMinutesAgo: 5 }),
+    ]);
+    assert.ok(await chartRow(open));
+    assert.equal(await chartRow(pending), null);
+    assert.equal(await chartRow(started), null);
   });
 
-  test("a hype stops counting after seven days", async () => {
-    const { id, db } = await newUser();
-    const base = await chartCount(artist["dock-leaf"]);
-
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    assert.equal(await chartCount(artist["dock-leaf"]), base + 1);
-
-    await backdate(id, artist["dock-leaf"], 8);
-    assert.equal(await chartCount(artist["dock-leaf"]), base, "should have aged out");
+  test("every hype is worth exactly one", async () => {
+    const show = await f.upcoming();
+    for (let i = 0; i < 3; i++) {
+      const u = await f.user();
+      await u.db.rpc("cast_hype", { p_gig_id: show });
+    }
+    assert.equal((await chartRow(show))?.hype_count, 3);
   });
 
-  test("a hype at six days still counts", async () => {
-    const { id, db } = await newUser();
-    const base = await chartCount(artist["dock-leaf"]);
+  test("yesterday's count leaves out the last 24 hours, for the arrows", async () => {
+    const show = await f.upcoming(10);
+    const old = await f.user();
+    const recent = await f.user();
+    await old.db.rpc("cast_hype", { p_gig_id: show });
+    await recent.db.rpc("cast_hype", { p_gig_id: show });
+    await backdate(old.id, show, 2);
 
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    await backdate(id, artist["dock-leaf"], 6);
-    assert.equal(await chartCount(artist["dock-leaf"]), base + 1);
+    const row = await chartRow(show);
+    assert.equal(row?.hype_count, 2);
+    assert.equal(row?.hype_count_yesterday, 1);
   });
 
-  test("the chart holds only artists with an upcoming live gig", async () => {
-    const { data } = await admin.from("artist_chart").select("id");
-    const ids = new Set((data ?? []).map((r) => r.id));
+  test("a show is named by its title, or else its headliner", async () => {
+    const titled = await f.upcoming(1, { title: "Gallus: Album Launch Show" });
+    const plain = await f.upcoming(2);
+    assert.equal((await chartRow(titled))?.name, "Gallus: Album Launch Show");
+    assert.equal((await chartRow(plain))?.name, f.bandName());
+  });
 
-    assert.ok(ids.has(artist["dock-leaf"]));
-    assert.ok(!ids.has(artist["test-no-gig"]), "no gig, no chart place");
-    assert.ok(!ids.has(artist["test-pending"]), "pending gig must not chart");
-    assert.ok(!ids.has(artist["test-past"]), "gig already started");
+  test("the chart names no one who hyped", async () => {
+    const { data } = await anon().from("gig_chart").select("*").limit(1);
+    const columns = Object.keys(data?.[0] ?? {});
+    assert.ok(columns.length > 0);
+    assert.ok(!columns.some((c) => c.includes("user")), `columns: ${columns.join(", ")}`);
   });
 });
 
@@ -411,142 +279,34 @@ describe("the Monday reset in Europe/London", () => {
 // ------------------------------------------------------------ direct writes
 
 describe("the table cannot be written around the functions", () => {
-  test("an authenticated user cannot insert a hype directly", async () => {
-    const { id, db } = await newUser();
-    const { error } = await db.from("hypes").insert({ user_id: id, artist_id: artist["dock-leaf"] });
-    assert.notEqual(error, null, "direct insert must be refused");
+  test("a hype cannot be inserted directly, as yourself or anyone else", async () => {
+    const me = await f.user();
+    const victim = await f.user();
+    const show = await f.upcoming();
+    assert.equal(code((await me.db.from("hypes").insert({ user_id: me.id, gig_id: show })).error), "42501");
+    assert.equal(code((await me.db.from("hypes").insert({ user_id: victim.id, gig_id: show })).error), "42501");
   });
 
-  test("an authenticated user cannot insert a hype as somebody else", async () => {
-    const victim = await newUser();
-    const attacker = await newUser();
-
-    const { error } = await attacker.db
-      .from("hypes")
-      .insert({ user_id: victim.id, artist_id: artist["dock-leaf"] });
-    assert.notEqual(error, null);
-  });
-
-  test("an authenticated user cannot delete another user's hype", async () => {
-    const victim = await newUser();
-    const attacker = await newUser();
-    await victim.db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
+  test("nobody can delete or read someone else's hype", async () => {
+    const victim = await f.user();
+    const attacker = await f.user();
+    const show = await f.upcoming();
+    await victim.db.rpc("cast_hype", { p_gig_id: show });
 
     await attacker.db.from("hypes").delete().eq("user_id", victim.id);
+    assert.deepEqual((await attacker.db.from("hypes").select("*").eq("user_id", victim.id)).data, []);
 
-    const { count } = await admin
-      .from("hypes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", victim.id);
-    assert.equal(count, 1, "the victim's hype must survive");
-  });
-
-  test("an authenticated user cannot read another user's hypes", async () => {
-    const victim = await newUser();
-    const attacker = await newUser();
-    await victim.db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-
-    const { data } = await attacker.db.from("hypes").select("*");
-    assert.equal(data?.length ?? 0, 0, "hypes are readable only by their owner");
+    const { count } = await admin.from("hypes").select("*", { count: "exact", head: true }).eq("user_id", victim.id);
+    assert.equal(count, 1, "the victim's hype survives");
   });
 
   test("take_back_hype only ever removes your own", async () => {
-    const victim = await newUser();
-    const attacker = await newUser();
-    await victim.db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
+    const victim = await f.user();
+    const attacker = await f.user();
+    const show = await f.upcoming();
+    await victim.db.rpc("cast_hype", { p_gig_id: show });
 
-    const { error } = await attacker.db.rpc("take_back_hype", {
-      p_artist_id: artist["dock-leaf"],
-    });
-    assert.equal(code(error), "GY004", "nothing of the attacker's to take back");
-
-    const { count } = await admin
-      .from("hypes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", victim.id);
-    assert.equal(count, 1);
-  });
-});
-
-// ------------------------------------------------------- chart movement
-
-describe("the up and down arrows", () => {
-  async function chartRow(artistId: string) {
-    const { data } = await admin
-      .from("artist_chart")
-      .select("hype_count, position, position_yesterday, is_new")
-      .eq("id", artistId)
-      .maybeSingle();
-    return data;
-  }
-
-  test("the live count is 7 days even though the view scans 8", async () => {
-    // The view reaches back 8 days so yesterday's ranking can come off the same
-    // scan. If the live count is not filtered back to 7 it silently becomes an
-    // 8 day count, which nothing else would catch.
-    const { id, db } = await newUser();
-    const before = (await chartRow(artist["dock-leaf"]))!.hype_count;
-
-    await db.rpc("cast_hype", { p_artist_id: artist["dock-leaf"] });
-    await backdate(id, artist["dock-leaf"], 7.5);
-
-    const after = (await chartRow(artist["dock-leaf"]))!;
-    assert.equal(after.hype_count, before, "a 7.5 day old hype must not count now");
-
-    const { count } = await admin
-      .from("hypes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", id);
-    assert.equal(count, 1, "the row is still there, it just stopped counting");
-  });
-
-  test("an artist with no earlier hypes is marked new", async () => {
-    const row = await chartRow(artist["test-fresh"]);
-    assert.equal(row?.hype_count, 0);
-    assert.equal(row?.is_new, true);
-  });
-
-  test("a hype cast today does not make an artist look established", async () => {
-    const { db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
-
-    const row = await chartRow(artist["test-fresh"]);
-    assert.equal(row?.hype_count, 1);
-    assert.equal(row?.is_new, true, "yesterday's window is still empty");
-  });
-
-  test("once a hype is older than a day the artist is no longer new", async () => {
-    const { id, db } = await newUser();
-    await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
-    await backdate(id, artist["test-fresh"], 3);
-
-    const row = await chartRow(artist["test-fresh"]);
-    assert.equal(row?.is_new, false);
-  });
-
-  test("gaining hypes moves an artist up relative to yesterday", async () => {
-    // Park three hypes on the fresh artist at 3 days old, so they sit in both
-    // windows, then add more that only count now.
-    for (let i = 0; i < 3; i++) {
-      const { id, db } = await newUser();
-      await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
-      await backdate(id, artist["test-fresh"], 3);
-    }
-    const settled = (await chartRow(artist["test-fresh"]))!;
-
-    for (let i = 0; i < 12; i++) {
-      const { db } = await newUser();
-      await db.rpc("cast_hype", { p_artist_id: artist["test-fresh"] });
-    }
-    const climbed = (await chartRow(artist["test-fresh"]))!;
-
-    assert.ok(
-      climbed.position! < settled.position!,
-      "more hypes should mean a better position",
-    );
-    assert.ok(
-      climbed.position! < climbed.position_yesterday!,
-      "and it should read as a climb against yesterday",
-    );
+    assert.equal(code((await attacker.db.rpc("take_back_hype", { p_gig_id: show })).error), "GY004");
+    assert.equal((await chartRow(show))?.hype_count, 1);
   });
 });

@@ -2,8 +2,8 @@
  * Gig submission and approval.
  *
  * The rule that matters: nothing a stranger submits can reach the chart before
- * a human approves it. That is enforced by artist_is_hypeable requiring a live
- * gig, and by the approval path being admin-only.
+ * a human approves it. That is enforced by gig_is_hypeable requiring a live
+ * show, and by the approval path being admin-only.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -105,7 +105,7 @@ describe("submitting a gig", () => {
     assert.equal(lineup![0].position, 0, "the submitted artist is the headliner");
   });
 
-  test("a brand new artist is created but cannot be hyped yet", async () => {
+  test("a brand new artist is created, but the show cannot be hyped yet", async () => {
     const { db } = await newUser();
     const { gig } = await submit(db, { p_artist_name: "Completely Unknown Quantity" });
 
@@ -116,16 +116,10 @@ describe("submitting a gig", () => {
       .single();
     madeArtists.push(lineup!.artist_id);
 
-    const { data: hypeable } = await admin.rpc("artist_is_hypeable", {
-      p_artist_id: lineup!.artist_id,
-    });
-    assert.equal(hypeable, false, "a pending gig must not open hyping");
+    const { data: hypeable } = await admin.rpc("gig_is_hypeable", { p_gig_id: gig!.id });
+    assert.equal(hypeable, false, "a pending show must not open hyping");
 
-    const { data: onChart } = await admin
-      .from("artist_chart")
-      .select("id")
-      .eq("id", lineup!.artist_id)
-      .maybeSingle();
+    const { data: onChart } = await admin.from("gig_chart").select("id").eq("id", gig!.id).maybeSingle();
     assert.equal(onChart, null, "and must not appear on the chart");
   });
 
@@ -273,7 +267,7 @@ describe("going around the submission function", () => {
 });
 
 describe("approving", () => {
-  test("an admin can approve, and only then can the artist be hyped", async () => {
+  test("an admin can approve, and only then can the show be hyped", async () => {
     const submitter = await newUser();
     const boss = await newUser(true);
     const { gig } = await submit(submitter.db, { p_artist_name: "Approval Test Band" });
@@ -285,7 +279,7 @@ describe("approving", () => {
       .single();
     madeArtists.push(lineup!.artist_id);
 
-    const before = await admin.rpc("artist_is_hypeable", { p_artist_id: lineup!.artist_id });
+    const before = await admin.rpc("gig_is_hypeable", { p_gig_id: gig!.id });
     assert.equal(before.data, false);
 
     const { data: updated, error } = await boss.db
@@ -297,11 +291,11 @@ describe("approving", () => {
     assert.equal(updated?.length, 1, "the admin's update must actually match a row");
     assert.equal(updated![0].status, "live");
 
-    const after = await admin.rpc("artist_is_hypeable", { p_artist_id: lineup!.artist_id });
+    const after = await admin.rpc("gig_is_hypeable", { p_gig_id: gig!.id });
     assert.equal(after.data, true, "approval is what opens hyping");
   });
 
-  test("a rejected gig stays hidden and its artist stays off the chart", async () => {
+  test("a rejected show stays hidden and off the chart", async () => {
     const submitter = await newUser();
     const boss = await newUser(true);
     const { gig } = await submit(submitter.db, { p_artist_name: "Rejected Test Band" });
@@ -319,9 +313,7 @@ describe("approving", () => {
     const { data: seen } = await stranger.db.from("gigs").select("id").eq("id", gig!.id);
     assert.equal(seen?.length ?? 0, 0);
 
-    const { data: hypeable } = await admin.rpc("artist_is_hypeable", {
-      p_artist_id: lineup!.artist_id,
-    });
+    const { data: hypeable } = await admin.rpc("gig_is_hypeable", { p_gig_id: gig!.id });
     assert.equal(hypeable, false);
   });
 

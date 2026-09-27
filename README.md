@@ -1,9 +1,10 @@
 # Gigly
 
-A what's-on guide for grassroots gigs in Liverpool, where fans hype local
-artists into a weekly chart. The unit is the **artist**, not the ticketed
-event, and the chart is about who is worth turning up for rather than what is
-selling.
+A what's-on guide for grassroots gigs in Liverpool, where fans hype the shows
+they are most up for. The unit is the **show**: it has a date, a room and
+tickets, and it ends. You hype it before, say you're going, take your stub
+during it, and it lives on its gig wall after. Artists are found through their
+shows and are never ranked against each other.
 
 `gigly-prototype.html` is the design and behaviour spec. It is not built on and
 not edited.
@@ -74,40 +75,48 @@ files are gitignored.
 
 All enforced in the database, not the UI. Assume people will try to cheat.
 
-- Three hypes per user per week, resetting Monday 00:00 **Europe/London** —
+- A hype backs a **show**, and counts until its doors open. There is no decay:
+  the show's date is the natural end. Hyping closes at doors, and the show
+  leaves the chart.
+- Three hypes per user per week, resetting Monday 00:00 **Europe/London**,
   computed in London wall-clock time so the reset does not drift by an hour
   under BST.
-- One live hype per artist per user. One row per pair, ever: re-hyping after
-  the window lapses updates `created_at` rather than inserting a second row.
-- Only artists with a `live` gig still to come can be hyped. Hyping opens when
-  the gig is listed and closes when it starts. Pending gigs do not count, so an
-  unapproved submission cannot lift anyone up the chart.
+- One hype per show per user.
+- Only `live` shows can be hyped, so a pending submission cannot climb the
+  chart unreviewed.
 - Every hype is worth exactly 1 point. No weighting by followers or capacity.
-- A hype counts for 7 days from when it was cast, then stops counting. Artist
-  scores are never reset; only the user's own allowance resets.
-- Taking a hype back returns it to the allowance.
+- Taking a hype back before doors returns it to the allowance. After doors it
+  is spent: otherwise backing three shows early in the week, taking them back
+  once they had happened and backing three more would make six on a
+  three-hype week.
+- Rows stay after the show, as the record of who backed what.
 
 Writes go through `cast_hype()` and `take_back_hype()`; direct DML on `hypes`
-is revoked. The allowance cannot be enforced by an RLS policy alone — a policy
+is revoked. The allowance cannot be enforced by an RLS policy alone: a policy
 is a per-row boolean with no serialisation, so two concurrent inserts both see
 "2 of 3 used" and both succeed. The functions take a transaction-scoped
 advisory lock keyed on the user.
 
-The up and down arrows are derived from the hypes table, not a daily snapshot:
-yesterday's chart is the same query with the window shifted back 24 hours. That
-avoids a cron job and a snapshot table. The tradeoff is that a hype cast and
-then taken back leaves no trace, so yesterday's position can be slightly off.
-Fine for an arrow; if the figure ever needs to be exact it wants a real
-`artist_rank_snapshots` table written daily.
+The chart (called **Backed**) is `gig_chart`: every live show whose doors have
+not opened, with its hype count. It is filtered to tonight, this week, this
+month or everything, and ranked inside the filter, so No. 1 tonight means
+tonight. It opens on this week: hype lasts until doors, so under "everything"
+a big show announced months out could hold No. 1 all season.
+
+The up and down arrows come from `hype_count_yesterday`, the same count without
+the last 24 hours, rather than a daily snapshot. That avoids a cron job and a
+snapshot table. The tradeoff is that a hype cast and then taken back leaves no
+trace, so yesterday's position can be slightly off. Fine for an arrow.
 
 Error codes the UI branches on:
 
 | code | meaning |
 | --- | --- |
 | `GY001` | no hypes left this week |
-| `GY002` | already hyping this artist, still inside the 7 day window |
-| `GY003` | artist has no upcoming live gig |
+| `GY002` | already backing this show |
+| `GY003` | show is not taking hypes (not live, or doors have opened) |
 | `GY004` | no hype to take back |
+| `GY005` | doors have opened, so that hype is spent |
 
 ## Friends, stubs and reactions
 
@@ -236,14 +245,20 @@ city centre, since "Quarry" otherwise matches a road in Woolton.
 ## Importing gigs
 
 `scripts/import/` holds the plumbing: a source returns plain objects, the
-runner validates them and calls `import_gig()`, and everything lands as
-**pending**. An importer is not more trusted than a person — a broken feed
-fills the approval queue, not the chart.
+runner validates them and calls `import_gig()`. A source marked `trusted`
+publishes straight away; any other lands as **pending**, so a new or shaky
+adapter fills the approval queue rather than the listings. A show someone
+rejected stays rejected on re-import.
+
+A listing is a show: it always has a title, and only sometimes names its
+artists. The title becomes `gigs.title`, and artist pages are made only for
+artists the feed actually names, never guessed from the title. Guessing is
+what turned "Big Condo Records Presents Aftermath 9" into an artist.
 
 Re-running updates rather than duplicating, keyed on `(source, source_ref)`.
-A gig already here from another source or from a human submission is
-recognised as a duplicate when it matches venue, headliner and a start time
-within 90 minutes.
+A show already here from another source or from a human submission is
+recognised as a duplicate when it matches venue, a start time within 90
+minutes, and either its headliner or its name.
 
 **Skiddle** is the first source. Looking at the eight venues directly showed
 why: only Future Yard and Quarry have sites robots.txt permits and that are
@@ -274,11 +289,11 @@ rather than a broken image nothing in the data would flag.
 `GigImage` picks, in order: the event's artwork, the headliner's photo, then
 the generated art. Everything that shows a gig goes through it.
 
-Two thirds of Skiddle's live events carry no parsed artist list, so the name
-is read out of the event title — "AnotherVU: A Tribute to The Velvet
-Underground & Nico" becomes "AnotherVU". Where that happens the original title
-is kept in `gigs.source_title` and shown in the approval queue, so a bad parse
-is obvious rather than becoming a junk artist page. Two other traps in their
+Skiddle is trusted. Two thirds of its live events name no artists, and those
+are shows under their own title: "TurnTable's Halloween Party 2026" is a
+perfectly good show and never was an artist. Only the location promoters tack
+on is trimmed ("Natalie McCool - The Kazimier Stockroom, Liverpool" is Natalie
+McCool); everything else in a title is the show's name. Two traps in their
 data: `entryprice` exists on every event and is empty on all of them (the
 money is in `ticketpricing`), and `startdate` carries a `+00:00` offset even
 in British Summer Time, so the instant is built from the date plus the door
@@ -304,7 +319,8 @@ node --env-file=apps/web/.env.production.local scripts/make-admin.mjs you@exampl
 The import takes two files because `SKIDDLE_API_KEY` lives only in
 `.env.local`. Node lets a later `--env-file` override an earlier one, so the
 Supabase URL and key come from production. Drop `--write` for a dry run first.
-Everything lands pending; approve it at `/admin` on the live site.
+Skiddle shows go live directly; anything from an untrusted source waits at
+`/admin` on the live site.
 
 ### Sample data
 
@@ -314,9 +330,10 @@ suite depends on it, so it stays. Seeded gigs carry `source = 'seed'`, and
 `pnpm db:clear-demo` removes them locally when you want to look at real
 listings without "Dock Leaf" next to them.
 
-Seeded gig times are offsets from the day the seed ran, so the local seed goes
-stale. About a week after a reset the seeded bands' gigs have all happened, and
-the hype tests that need an upcoming gig fail until the next `pnpm db:reset`.
+Seeded gig times are offsets from the day the seed ran, so a week after a reset
+the seeded bands' shows have all happened and the local listings thin out. The
+tests do not mind: the rule tests make their own shows through
+`tests/support.mts`.
 
 `scripts/import/polite.mjs` identifies as GiglyBot with a contact URL, obeys
 robots.txt for **that** name, and waits a second between requests to a host.
@@ -324,7 +341,13 @@ robots.txt is per-user-agent: a site blocking thirty AI crawlers by name has
 said nothing about an app importing gig listings, and the parser reads the
 rules that actually apply.
 
-## Two things that are not the prototype
+## Where this is not the prototype
+
+**Shows are hyped, not artists.** The prototype hypes artists and ranks them.
+Here the show is the thing: the chart is the most anticipated shows, artists
+are never ranked, and artist pages are for finding out who someone is and where
+to see them next. The prototype's look is kept; its chart, stories and deck
+logic are not.
 
 **Nights, not calendar days.** A gig at 00:30 on Saturday is Friday night out.
 Listings cut the night at 4am, so the day filters group a late gig with the

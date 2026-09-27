@@ -9,19 +9,19 @@ const RULES: { icon: IconName; title: string; detail: string }[] = [
     detail: "Fresh ones every Monday.",
   },
   {
+    icon: "ticket",
+    title: "You back a show, not a band",
+    detail: "The chart is the shows Liverpool is most up for, so it's always something you can go to.",
+  },
+  {
     icon: "user",
-    title: "One per artist",
+    title: "One per show",
     detail: "So a big number means a lot of different people.",
   },
   {
-    icon: "cal",
-    title: "Only artists with a Liverpool gig coming up",
-    detail: "You back them before the show, to help fill the room.",
-  },
-  {
     icon: "clock",
-    title: "A hype counts for seven days",
-    detail: "Then it fades, so the chart shows who people back right now.",
+    title: "A hype counts until doors open",
+    detail: "Then the show's on, and the chart moves on to what's next.",
   },
 ];
 
@@ -41,7 +41,7 @@ export default function HypeRules() {
         ))}
       </ul>
       <p className="text-soft mt-4 text-sm">
-        Changed your mind? Take a hype back and it returns to your three.
+        Changed your mind? Take a hype back before doors and it returns to your three.
       </p>
     </div>
   );

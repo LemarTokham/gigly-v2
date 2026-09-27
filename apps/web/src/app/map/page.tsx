@@ -6,6 +6,7 @@ import { VenueMap } from "@/components/venue-map";
 import type { MapVenue } from "@/components/venue-panel";
 import { clockTime, dayWord, money, nightOf, todayNight } from "@/lib/format";
 import { getHypeState, getVenuesForMap } from "@/lib/queries";
+import { showName } from "@/lib/shows";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export default async function MapPage({
     gigs: v.gigs.map((g) => ({
       id: g.id,
       slug: g.slug,
-      headliner: g.lineup[0]?.artist.name ?? "",
+      name: showName(g),
       when: `${dayWord(nightOf(g.starts_at), today)} ${clockTime(g.starts_at)}`,
       price: money(g.price_pence),
     })),
@@ -101,7 +102,7 @@ export default async function MapPage({
               <b className="block text-base leading-tight font-bold">{v.name}</b>
               <i className="text-soft block text-[13px] not-italic">
                 {v.area}
-                {v.next_gig ? `. Next: ${v.next_gig.lineup[0].artist.name}` : ""}
+                {v.next_gig ? `. Next: ${showName(v.next_gig)}` : ""}
               </i>
             </Link>
             <span className="text-soft text-sm">

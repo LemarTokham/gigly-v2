@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { PosterArt } from "@/components/poster-art";
 
-type Artistish = {
+export type Artistish = {
   slug: string;
   name: string;
   photo_url: string | null;

@@ -7,7 +7,8 @@ import { Icon } from "@/components/icon";
 import { GoingButton } from "@/components/going-button";
 import { HypeButton } from "@/components/hype-button";
 import { clockTime, dayWord, money, nightOf, todayNight } from "@/lib/format";
-import { getGigBySlug, getHypeState, getMyState } from "@/lib/queries";
+import { getGigBySlug, getHypeCounts, getHypeState, getMyState } from "@/lib/queries";
+import { showName, showSupport } from "@/lib/shows";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,7 @@ export async function generateMetadata({
   const gig = await getGigBySlug(slug);
   if (!gig) return { title: "Not found" };
 
-  const head = gig.lineup[0]?.artist;
-  const title = head ? `${head.name} at ${gig.venue.name}` : gig.venue.name;
+  const title = `${showName(gig)} at ${gig.venue.name}`;
   const description = `${dayWord(nightOf(gig.starts_at), todayNight())}, doors ${clockTime(gig.starts_at)}. ${gig.venue.name}, ${gig.venue.area}. ${money(gig.price_pence)}.`;
 
   return { title, description, openGraph: { title, description, type: "website" } };
@@ -29,16 +29,17 @@ export async function generateMetadata({
 
 export default async function GigPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [gig, me, hype] = await Promise.all([
+  const [gig, me, hype, hypeCounts] = await Promise.all([
     getGigBySlug(slug),
     getMyState(),
     getHypeState(),
+    getHypeCounts(),
   ]);
   if (!gig) notFound();
 
-  const head = gig.lineup[0]?.artist;
-  const support = gig.lineup.slice(1).map((l) => l.artist.name);
+  const support = showSupport(gig);
   const today = todayNight();
+  const hypeable = gig.status === "live" && new Date(gig.starts_at) > new Date();
 
   return (
     <article className="-mx-4">
@@ -50,7 +51,7 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
         </span>
         <span className="absolute right-3.5 bottom-3 left-3.5 z-10">
           <b className="font-display block text-[clamp(28px,8.5vw,36px)] leading-[1.04] [overflow-wrap:anywhere]">
-            {head?.name}
+            {showName(gig)}
           </b>
           {support.length > 0 && (
             <i className="mt-[3px] block text-sm font-semibold not-italic opacity-90">
@@ -71,6 +72,26 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
         </Link>
 
         <div className="mt-3.5 flex items-stretch gap-2">
+          <HypeButton
+            gigId={gig.id}
+            showName={showName(gig)}
+            hyped={hype.hyped.has(gig.id)}
+            hypeable={hypeable}
+            hypesLeft={hype.left}
+            signedIn={!!hype.userId}
+            path={`/gig/${gig.slug}`}
+            variant="wide"
+          />
+          <span
+            className="border-line text-hype inline-flex shrink-0 items-center justify-center gap-[5px] rounded-xl border-2 px-3.5 text-base font-bold"
+            aria-label={`${hypeCounts.get(gig.id) ?? 0} hypes`}
+          >
+            <Icon name="flame" />
+            {hypeCounts.get(gig.id) ?? 0}
+          </span>
+        </div>
+
+        <div className="mt-2 flex items-stretch gap-2">
           <GoingButton
             gigId={gig.id}
             going={me.going.has(gig.id)}
@@ -96,31 +117,27 @@ export default async function GigPage({ params }: { params: Promise<{ slug: stri
           )}
         </div>
 
-        <h2 className="font-display mt-[22px] mb-2 text-base">Line-up</h2>
-        {gig.lineup.map(({ artist }) => (
-          <div key={artist.id} className="border-line flex items-center gap-3 border-b py-2">
-            <Link
-              href={`/artist/${artist.slug}`}
-              className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl"
-              aria-label={artist.name}
-            >
-              <ArtistImage artist={artist} />
-            </Link>
-            <Link href={`/artist/${artist.slug}`} className="min-w-0 flex-1">
-              <b className="block text-base leading-tight font-bold">{artist.name}</b>
-              <i className="text-soft block text-[13px] not-italic">{artist.genre}</i>
-            </Link>
-            <HypeButton
-              artistId={artist.id}
-              artistName={artist.name}
-              hyped={hype.hyped.has(artist.id)}
-              hypeable={new Date(gig.starts_at) > new Date() && gig.status === "live"}
-              hypesLeft={hype.left}
-              signedIn={!!hype.userId}
-              path={`/gig/${gig.slug}`}
-            />
-          </div>
-        ))}
+        {gig.lineup.length > 0 && (
+          <>
+            <h2 className="font-display mt-[22px] mb-2 text-base">Line-up</h2>
+            {gig.lineup.map(({ artist }) => (
+              <Link
+                key={artist.id}
+                href={`/artist/${artist.slug}`}
+                className="border-line flex items-center gap-3 border-b py-2"
+              >
+                <span className="relative block size-[54px] shrink-0 overflow-hidden rounded-xl">
+                  <ArtistImage artist={artist} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-base leading-tight font-bold">{artist.name}</b>
+                  <i className="text-soft block text-[13px] not-italic">{artist.genre}</i>
+                </span>
+                <Icon name="go" className="text-soft" />
+              </Link>
+            ))}
+          </>
+        )}
       </div>
     </article>
   );
